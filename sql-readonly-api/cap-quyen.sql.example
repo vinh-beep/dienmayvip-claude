@@ -1,0 +1,24 @@
+-- Tạo login CHỈ-ĐỌC cho API. Chạy bằng tài khoản quản trị, một lần. Đổi [TEN_DB] và mật khẩu.
+-- Không đưa mật khẩu thật lên GitHub.
+
+CREATE LOGIN dmv_api_ro WITH PASSWORD = N'<DAT-MAT-KHAU-MANH>', CHECK_POLICY = ON;
+GO
+USE [TEN_DB];
+GO
+CREATE USER dmv_api_ro FOR LOGIN dmv_api_ro;
+GO
+
+-- Chỉ cấp SELECT đúng các view dành cho API (tên bắt đầu vw_API_).
+-- KHÔNG cấp quyền trên bảng gốc, KHÔNG thêm vào bất kỳ role nào (db_datareader cũng không).
+GRANT SELECT ON OBJECT::dbo.vw_API_TonGiaBan TO dmv_api_ro;
+GO
+
+-- Gợi ý: để view đọc được bảng gốc mà user không có quyền trên bảng gốc, tạo view cùng
+-- chủ sở hữu (schema dbo) với bảng gốc (ownership chaining). View chỉ chọn cột bán hàng:
+-- ParentSKU, tên, tồn, giá lẻ, giá cũ... — KHÔNG chọn giá vốn, giá nhập, NCC, SĐT.
+-- Tên cột lấy theo tài liệu cấu trúc MATHANG (Section 29), không đoán.
+
+-- Kiểm tra sau khi tạo (đăng nhập bằng dmv_api_ro):
+--   SELECT IS_SRVROLEMEMBER('sysadmin'), IS_MEMBER('db_owner'), IS_MEMBER('db_datawriter');  -- phải ra 0,0,0
+--   SELECT TOP 1 * FROM dbo.vw_API_TonGiaBan;   -- chạy được
+--   SELECT TOP 1 * FROM dbo.MATHANG;            -- phải bị từ chối

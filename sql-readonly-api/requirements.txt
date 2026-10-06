@@ -1,0 +1,4 @@
+fastapi>=0.110
+uvicorn>=0.29
+pyodbc>=5.0
+# kiểm thử: pip install pytest httpx

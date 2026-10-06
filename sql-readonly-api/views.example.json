@@ -1,0 +1,12 @@
+{
+  "views": {
+    "ton-gia-ban": {
+      "description": "VÍ DỤ — Tồn và giá bán công khai theo ParentSKU. Không có giá vốn / NCC.",
+      "source": "dbo.vw_API_TonGiaBan",
+      "columns": ["ParentSKU", "Ten", "TonBanSan", "TonHTsoft", "GiaLe", "GiaCu", "GiaShopee"],
+      "filter_columns": ["ParentSKU"],
+      "order_by": "ParentSKU",
+      "max_rows": 1000
+    }
+  }
+}
