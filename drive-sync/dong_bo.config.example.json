@@ -1,0 +1,16 @@
+{
+  "remote": "dmv-drive:",
+  "nguon": [
+    { "thu_muc": "C:\\ClaudeVIP", "dich": "ClaudeVIP" },
+    { "thu_muc": "C:\\DMV_Sync", "dich": "DMV_Sync" },
+    { "thu_muc": "<THU-MUC-XUAT-BAO-CAO>", "dich": "BaoCao" }
+  ],
+  "max_size": "50M",
+  "max_age": "2d",
+  "min_age": "1m",
+  "rclone": "rclone",
+  "thu_muc_log": "C:\\DMV_DongBoDrive\\log",
+  "thu_muc_tin": "G:\\My Drive\\DMV-Cloud-Bridge",
+  "bao_loi_sau_gio": 24,
+  "cho_phep_duoi_khong_quet": []
+}
