@@ -94,9 +94,9 @@ def in_pdf(danh_sach: list[dict[str, str]], goc: str, tep_ra: str) -> int:
         c.drawString(x + 37 * mm, y + 30 * mm, "GIÁ & TƯ VẤN")
         c.setFont(thuong, 6)
         ten = r.get("ten", r["sku"])
-        for j, dong in enumerate(textwrap.wrap(ten, 17)[:4]):
+        for j, dong in enumerate(textwrap.wrap(ten, 14)[:4]):
             c.drawString(x + 37 * mm, y + (24 - j * 4) * mm, dong)
-        c.drawString(x + 37 * mm, y + 6 * mm, f"{r['cn']} {r.get('ke', '')}".strip())
+        c.drawString(x + 37 * mm, y + 6 * mm, (CHI_NHANH[r["cn"]] + (" · Kệ " + r["ke"] if r.get("ke") else "")).strip())
     c.save()
     return len(danh_sach)
 
