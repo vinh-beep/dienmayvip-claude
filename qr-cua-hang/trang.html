@@ -51,6 +51,7 @@
     <button class="nut-phu" id="nut-huy">Rút lại đồng ý / ngừng nhận tin</button>
     <div class="bao an" id="bao-dk"></div>
   </div>
+  <p class="phu" style="text-align:center"><a id="link-nv" href="/nv" style="color:inherit">Nhân viên</a></p>
 </main>
 <script>
 (() => {
@@ -63,6 +64,7 @@
     .then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "Lỗi"); return r.json(); });
   const bao = (el, text) => { el.textContent = text; el.classList.remove("an"); };
 
+  $("link-nv").href = "/nv" + location.search;
   if (imeiUrl) $("imei").value = imeiUrl;
   if (vt.nguon === "bh") { $("the-tu-van").classList.add("an"); $("tieu-de-dk").textContent = "Đăng ký bảo hành điện tử"; }
 

@@ -63,6 +63,11 @@ class CauHinh:
     tuoi_gia_toi_da_giay: int = 15 * 60
     phien_ban_dieu_khoan: str = "DK-2026-10-v1"
     gioi_han_moi_phut: int = 30
+    # Phần nội bộ nhân viên (nhan_vien.py): bỏ trống ma_nhan_vien = tắt
+    ma_nhan_vien: tuple[str, ...] = ()
+    thu_muc_yeu_cau: Path | None = None  # đề nghị chuyển kho / đặt NCC, chờ anh duyệt
+    nguong_sap_het: int = 2
+    nguong_ton_lon: int = 30
 
 
 def _kiem_khong_trong_vung_sync(p: Path, ten: str) -> None:
@@ -88,7 +93,15 @@ def cau_hinh_tu_env() -> CauHinh:
         thu_muc_chuong=Path(bat_buoc("QR_THU_MUC_CHUONG")),
         token_bao_cao=token,
         tuoi_gia_toi_da_giay=int(os.environ.get("QR_TUOI_GIA_TOI_DA_GIAY", 900)),
+        ma_nhan_vien=tuple(m.strip() for m in os.environ.get("QR_MA_NHAN_VIEN", "").split(",") if m.strip()),
+        thu_muc_yeu_cau=Path(os.environ["QR_THU_MUC_YEU_CAU"]) if os.environ.get("QR_THU_MUC_YEU_CAU") else None,
+        nguong_sap_het=int(os.environ.get("QR_NGUONG_SAP_HET", 2)),
+        nguong_ton_lon=int(os.environ.get("QR_NGUONG_TON_LON", 30)),
     )
+    if any(len(m) < 8 for m in ch.ma_nhan_vien):
+        raise CauHinhLoi("Mỗi mã nhân viên trong QR_MA_NHAN_VIEN phải dài ít nhất 8 ký tự")
+    if ch.ma_nhan_vien and ch.thu_muc_yeu_cau is None:
+        raise CauHinhLoi("Bật mã nhân viên thì phải có QR_THU_MUC_YEU_CAU")
     _kiem_khong_trong_vung_sync(ch.thu_muc_rieng_tu, "QR_THU_MUC_RIENG_TU")
     return ch
 
@@ -139,6 +152,14 @@ class KhoGia:
                 return None, False
             tuoi = time.time() - (self._mtime or 0)
             return self._du_lieu.get(sku), tuoi <= self.tuoi_toi_da
+
+    def tat_ca(self) -> list[dict[str, Any]]:
+        with self._khoa:
+            try:
+                self._nap()
+            except (OSError, ValueError, KeyError):
+                return []
+            return list(self._du_lieu.values())
 
 
 class GioiHanLuot:
@@ -293,6 +314,9 @@ def create_app(ch: CauHinh) -> FastAPI:
                 dem["nguon_loai"][f"{r.get('nguon')}:{r.get('loai')}"] += 1
         return JSONResponse({k: dict(v.most_common(50)) for k, v in dem.items()})
 
+    if ch.ma_nhan_vien:
+        from nhan_vien import gan_route_nhan_vien
+        gan_route_nhan_vien(app, ch, kho, chan_spam)
     return app
 
 
