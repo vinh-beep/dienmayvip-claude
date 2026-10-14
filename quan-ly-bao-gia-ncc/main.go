@@ -101,6 +101,7 @@ func main() {
 		}
 		traJSON(w, map[string]int{"daXoa": n})
 	})
+	dangKyHDDT(mux, kho, thuMuc)
 	mux.HandleFunc("/api/xuat-csv", func(w http.ResponseWriter, r *http.Request) {
 		ngay, loai := r.URL.Query().Get("ngay"), r.URL.Query().Get("loai")
 		ten := "Gia NCC " + time.Now().Format("02 01 2006 15h04p") + ".csv"

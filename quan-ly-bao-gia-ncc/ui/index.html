@@ -63,6 +63,7 @@ td input.so{text-align:right}
   <button data-tab="chua" onclick="chonTab('chua')">Chưa tham gia CTKM Samsung <span class="dem" id="demChua">0</span></button>
   <button data-tab="nhap" onclick="chonTab('nhap')">Nhập bảng giá mới</button>
   <button data-tab="lich-su" onclick="chonTab('lich-su')">Lịch sử theo ngày</button>
+  <button data-tab="hddt" onclick="chonTab('hddt')">HĐĐT NCC <span class="dem" id="demHD">0</span></button>
 </nav>
 <main>
   <div class="thong-bao" id="thongBao"></div>
@@ -99,8 +100,58 @@ td input.so{text-align:right}
   <section id="tab-lich-su" class="tab">
     <div id="bang-lich-su"></div>
   </section>
+
+  <section id="tab-hddt" class="tab">
+    <p class="mo-ta">Hoá đơn điện tử (HĐĐT) của NCC: tự tìm từ email Fast e-Invoice (qua danh sách Claude Cloud ghi lên Bridge hoặc IMAP Gmail), từ Everything, hoặc quét thư mục; tải XML/PDF về máy; đối chiếu từng dòng hoá đơn với báo giá gần nhất.</p>
+    <div class="the">
+      <div class="hang">
+        <button class="nut" onclick="hdNap('/api/hddt/nap-bridge',{})" title="Đọc hddt-links-*.json trong thư mục Bridge (G:\My Drive\DMV-Cloud-Bridge)">1. Nạp từ Bridge (AI Cloud đã tìm email)</button>
+        <button class="nut phu" onclick="hdNap('/api/hddt/imap',{})" title="Đăng nhập IMAP Gmail bằng mật khẩu ứng dụng, tìm thư Fast e-Invoice">2. Tìm trong Gmail (IMAP)</button>
+        <button class="nut phu" onclick="hdNap('/api/hddt/everything',{})">3. Tìm bằng Everything</button>
+        <button class="nut phu" onclick="hdNap('/api/hddt/quet',{})">4. Quét thư mục</button>
+        <button class="nut phu" onclick="moDanEmail()">Dán email</button>
+        <span style="flex:1"></span>
+        <button class="nut" onclick="hdNap('/api/hddt/tai',{ID:0})">Tải XML + PDF (tất cả còn thiếu)</button>
+        <button class="nut phu" onclick="location.href='/api/hddt/xuat-csv'">Xuất CSV</button>
+        <button class="nut phu" onclick="moCauHinh()">Cấu hình</button>
+      </div>
+      <div class="ghi" id="hdTrangThai"></div>
+    </div>
+    <div class="the" id="hopDanEmail" style="display:none">
+      <div class="hang"><b>Dán nội dung email Fast e-Invoice</b><span class="ghi">(mở email trong Gmail → Ctrl+A, Ctrl+C → dán; có thể dán nhiều email nối nhau)</span><span style="flex:1"></span><button class="nut" onclick="hdNap('/api/hddt/nap-email',{VanBan:document.getElementById('emailText').value});document.getElementById('hopDanEmail').style.display='none'">Đọc email</button></div>
+      <textarea id="emailText" style="min-height:140px"></textarea>
+    </div>
+    <div class="the" id="hopDanJSON" style="display:none">
+      <div class="hang"><b>Dán JSON danh sách link (từ chat Claude)</b><span style="flex:1"></span><button class="nut" onclick="hdNap('/api/hddt/nap-bridge',{JSON:document.getElementById('jsonText').value});document.getElementById('hopDanJSON').style.display='none'">Nạp</button></div>
+      <textarea id="jsonText" style="min-height:120px"></textarea>
+    </div>
+    <div id="bang-hddt"></div>
+  </section>
 </main>
 
+<div class="hop" id="hopHD">
+  <div class="the" style="width:900px">
+    <div class="hang"><h3 style="margin:0" id="hdTieuDe">Hoá đơn</h3><span style="flex:1"></span><button class="nut phu" onclick="document.getElementById('hopHD').classList.remove('mo')">Đóng</button></div>
+    <div id="hdNoiDung" class="cuon" style="max-height:60vh"></div>
+  </div>
+</div>
+<div class="hop" id="hopCauHinh">
+  <div class="the" style="width:640px">
+    <h3 style="margin-top:0">Cấu hình HĐĐT</h3>
+    <div class="luoi">
+      <label>Lọc NCC</label><input id="c-locNCC" placeholder="KHUONG VIET">
+      <label>MST NCC</label><input id="c-mstNCC" placeholder="(tuỳ chọn, chính xác hơn tên)">
+      <label>Everything URL</label><input id="c-everythingURL" placeholder="http://127.0.0.1:8080">
+      <label>Thư mục quét</label><input id="c-thuMucQuet" placeholder="nhiều thư mục cách nhau dấu ;">
+      <label>Thư mục Bridge</label><input id="c-thuMucBridge" placeholder="G:\My Drive\DMV-Cloud-Bridge">
+      <label>IMAP tài khoản</label><input id="c-imapUser" placeholder="vinh@dienmayvip.com">
+      <label>Mật khẩu ứng dụng</label><input id="c-imapMatKhau" type="password" placeholder="16 ký tự từ Google → Bảo mật → Mật khẩu ứng dụng">
+      <label>IMAP từ ngày</label><input id="c-imapTuNgay" placeholder="dd/mm/yyyy">
+    </div>
+    <p class="ghi">Everything: Tools → Options → HTTP Server → bật, cổng 8080. Mật khẩu ứng dụng chỉ lưu trong du-lieu trên máy này. Lọc NCC so không dấu, không phân biệt hoa thường.</p>
+    <div class="hang" style="justify-content:flex-end"><button class="nut phu" onclick="document.getElementById('hopCauHinh').classList.remove('mo')">Huỷ</button><button class="nut" onclick="luuCauHinh()">Lưu</button></div>
+  </div>
+</div>
 <div class="hop" id="hopSua">
   <div class="the">
     <h3 style="margin-top:0">Sửa dòng giá</h3>
@@ -171,12 +222,47 @@ function veLichSu(){
     h+=`<tr><td><b>${n}</b></td><td>${esc(nccs)}</td><td class="so">${ds.filter(d=>d.loaiHang==='DaKich').length}</td><td class="so">${ds.filter(d=>d.loaiHang==='ChuaKich').length}</td><td class="ghi">${esc(ds[0].taoLuc)}</td><td><a href="#" onclick="xuatCSV('','${n}');return false">Xuất CSV</a></td></tr>`}
   return h+'</tbody></table></div>'}
 
+let HDDT={hoaDon:[],cauHinh:{},tepBridge:[]};
+const nccNgan=s=>(s||'').replace(/^CÔNG TY (TNHH|CỔ PHẦN|TRÁCH NHIỆM HỮU HẠN)?\s*(THƯƠNG MẠI|ĐẦU TƯ|MTV)?[^A-ZĐ]*/i,'').replace(/^(THƯƠNG MẠI|-|DỊCH VỤ|VÀ|&|\s)+/i,'')||s;
+const nhanNguon={email:'Email',bridge:'Bridge (AI Cloud)',imap:'Gmail IMAP',everything:'Everything','thu-muc':'Thư mục',tay:'Tay'};
+const nhanTT={moi:'<span class="nhan chua">Chưa tải</span>','da-tai':'<span class="nhan da">Đã tải</span>','da-doc':'<span class="nhan da">Đã đọc XML</span>',loi:'<span class="nhan" style="background:#fee2e2;color:#b91c1c">Lỗi</span>'};
+async function taiHDDT(){const r=await fetch('/api/hddt');HDDT=await r.json();document.getElementById('demHD').textContent=HDDT.hoaDon.length;if(TAB==='hddt')veHDDT()}
+function veHDDT(){const ds=HDDT.hoaDon;let h='<div class="the">';
+  h+=`<div class="ghi" style="margin-bottom:8px">Tệp link trên Bridge: ${HDDT.tepBridge.length?HDDT.tepBridge.map(t=>esc(t.split(/[\\/]/).pop())).join(', '):'(chưa có — Claude Cloud sẽ ghi hddt-links-*.json khi tìm email) '} · <a href="#" onclick="document.getElementById('hopDanJSON').style.display='';return false">dán JSON tay</a> · Tệp tải về: ${esc(HDDT.thuMucHD)}</div>`;
+  if(!ds.length){h+='<div class="trong">Chưa có hoá đơn. Bấm "Nạp từ Bridge" hoặc "Tìm bằng Everything".</div></div>';document.getElementById('bang-hddt').innerHTML=h;return}
+  h+='<div class="cuon"><table><thead><tr><th>Ngày lập ▼</th><th>Số HĐ</th><th>Ký hiệu</th><th>NCC</th><th class="so">Tổng thanh toán</th><th class="so">Dòng</th><th>Nguồn</th><th>Trạng thái</th><th>Tệp</th><th></th></tr></thead><tbody>';
+  for(const d of ds){h+=`<tr><td style="white-space:nowrap">${d.ngayLap?esc(d.ngayLap):'<span class="ghi">email '+esc(d.emailNgay||'?')+'</span>'}</td><td><b>${esc(d.so)}</b></td><td>${esc(d.kyHieu)}</td><td style="white-space:nowrap" title="${esc(d.ncc)}">${esc(nccNgan(d.ncc))}</td><td class="so">${d.tongTT?vnd(d.tongTT):'—'}</td><td class="so">${d.dong?d.dong.length:0}</td><td>${nhanNguon[d.nguon]||esc(d.nguon)}</td><td>${nhanTT[d.trangThai]||esc(d.trangThai)}${d.loi?'<div class="ghi" title="'+esc(d.loi)+'">'+esc(d.loi.length>110?d.loi.slice(0,110)+'…':d.loi)+'</div>':''}</td>
+    <td style="white-space:nowrap">${d.tepPDF?`<a href="#" onclick="moTepHD(${d.id},'pdf');return false">PDF</a> `:''}${d.tepXML?`<a href="#" onclick="moTepHD(${d.id},'xml');return false">XML</a> `:''}${d.linkTraCuu?`<a href="${esc(d.linkTraCuu)}" target="_blank">Tra cứu</a>`:''}</td>
+    <td style="white-space:nowrap">${(d.linkXML||d.linkPDF)?`<a href="#" onclick="hdNap('/api/hddt/tai',{ID:${d.id}});return false">Tải</a> · `:''}${d.tepXML?`<a href="#" onclick="hdNap('/api/hddt/doc-tep',{ID:${d.id}});return false">Đọc lại</a> · `:''}<a href="#" onclick="xemHD(${d.id});return false">Chi tiết</a> · <a href="#" onclick="xoaHD(${d.id});return false">Xoá</a></td></tr>`}
+  document.getElementById('bang-hddt').innerHTML=h+'</tbody></table></div></div>'}
+async function hdNap(url,body){const tt=document.getElementById('hdTrangThai');tt.textContent='Đang xử lý… (IMAP/Everything có thể mất vài chục giây)';
+  try{const r=await fetch(url,{method:'POST',body:JSON.stringify(body)});const t=await r.text();if(!r.ok){tt.textContent='';return baoCao(t,true)}
+   let j={};try{j=JSON.parse(t)}catch(e){}tt.textContent=j.thongBao||'';baoCao(j.thongBao||'Xong.');if(j.chiTiet&&j.chiTiet.length)tt.textContent+=' — '+j.chiTiet.join(' | ')}
+  catch(e){baoCao('Lỗi: '+e,true)}await taiHDDT()}
+function moDanEmail(){document.getElementById('hopDanEmail').style.display=''}
+async function moTepHD(id,loai){const r=await fetch(`/api/hddt/mo?id=${id}&loai=${loai}`);if(!r.ok)baoCao(await r.text(),true)}
+async function xoaHD(id){if(!confirm('Xoá hoá đơn khỏi danh sách? (tệp đã tải vẫn còn trong du-lieu/hddt)'))return;await fetch('/api/hddt/xoa',{method:'POST',body:JSON.stringify({ID:id})});await taiHDDT()}
+async function xemHD(id){const r=await fetch('/api/hddt/chi-tiet?id='+id);if(!r.ok)return baoCao(await r.text(),true);const j=await r.json();const h=j.hoaDon;
+  document.getElementById('hdTieuDe').textContent=`HĐ ${h.kyHieu||''} ${h.so} — ${h.ncc||''} — ${h.ngayLap||''}`;
+  let t=`<div class="tom-tat"><div class="o"><b>${vnd(h.tienHang)}</b><span>tiền hàng</span></div><div class="o"><b>${vnd(h.thue)}</b><span>thuế</span></div><div class="o"><b>${vnd(h.tongTT)}</b><span>tổng thanh toán</span></div></div>`;
+  if(!j.dong||!j.dong.length)t+='<div class="trong">Chưa đọc được dòng hàng (hoá đơn chưa tải XML hoặc XML không có chi tiết).</div>';
+  else{t+='<table><thead><tr><th>Tên hàng trên HĐ</th><th class="so">SL</th><th class="so">Đơn giá HĐ</th><th class="so">Thành tiền</th><th>Báo giá gần nhất</th><th class="so">Chênh HĐ − báo giá</th></tr></thead><tbody>';
+   for(const d of j.dong){const b=d.baoGia;let so='<span class="ghi">không khớp model</span>',ch='—';if(b){so=`${esc(b.tenHang)} · ${b.loaiHang==='DaKich'?'đã CTKM':'chưa CTKM'} · ${b.ngay}: <b>${vnd(b.donGia)}</b>`;const c=d.donGia-b.donGia;ch=c>0?`<span class="tang">▲ ${vnd(c)}</span>`:c<0?`<span class="giam">▼ ${vnd(-c)}</span>`:'<span class="bang">=</span>'}
+    t+=`<tr><td>${esc(d.ten)}</td><td class="so">${d.sl}</td><td class="so"><b>${vnd(d.donGia)}</b></td><td class="so">${vnd(d.thanhTien)}</td><td>${so}</td><td class="so">${ch}</td></tr>`}
+   t+='</tbody></table>'}
+  t+=`<p class="ghi">Tệp: ${esc(h.tepXML||'(chưa có XML)')} · ${esc(h.tepPDF||'(chưa có PDF)')}${h.maTraCuu?' · Mã tra cứu: '+esc(h.maTraCuu):''}</p>`;
+  document.getElementById('hdNoiDung').innerHTML=t;document.getElementById('hopHD').classList.add('mo')}
+function moCauHinh(){const c=HDDT.cauHinh;for(const k of ['locNCC','mstNCC','everythingURL','thuMucBridge','imapUser','imapMatKhau','imapTuNgay'])document.getElementById('c-'+k).value=c[k]||'';document.getElementById('c-thuMucQuet').value=(c.thuMucQuet||[]).join('; ');document.getElementById('hopCauHinh').classList.add('mo')}
+async function luuCauHinh(){const c={};for(const k of ['locNCC','mstNCC','everythingURL','thuMucBridge','imapUser','imapMatKhau','imapTuNgay'])c[k]=document.getElementById('c-'+k).value.trim();c.thuMucQuet=document.getElementById('c-thuMucQuet').value.split(';').map(x=>x.trim()).filter(Boolean);
+  const r=await fetch('/api/hddt/cau-hinh',{method:'POST',body:JSON.stringify(c)});if(!r.ok)return baoCao(await r.text(),true);document.getElementById('hopCauHinh').classList.remove('mo');await taiHDDT();baoCao('Đã lưu cấu hình.')}
+
 function ve(){
   document.getElementById('demDa').textContent=DU_LIEU.filter(d=>d.loaiHang==='DaKich').length;
   document.getElementById('demChua').textContent=DU_LIEU.filter(d=>d.loaiHang==='ChuaKich').length;
   if(TAB==='da')document.getElementById('bang-da').innerHTML=veNhom('DaKich');
   if(TAB==='chua')document.getElementById('bang-chua').innerHTML=veNhom('ChuaKich');
   if(TAB==='lich-su')document.getElementById('bang-lich-su').innerHTML=veLichSu();
+  if(TAB==='hddt')veHDDT();
 }
 
 async function docTin(){
@@ -228,7 +314,7 @@ async function xoaNgay(loai,ngay){const ids=DU_LIEU.filter(d=>d.loaiHang===loai&
 function xuatCSV(loai,ngay){location.href='/api/xuat-csv?loai='+encodeURIComponent(loai||'')+'&ngay='+encodeURIComponent(ngay||'')}
 
 document.getElementById('ngay').value=homNay();
-chonTab('da');tai();
+chonTab('da');tai();taiHDDT();
 </script>
 </body>
 </html>

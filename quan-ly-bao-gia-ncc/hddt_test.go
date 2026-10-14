@@ -1,0 +1,149 @@
+package main
+
+// Số liệu trong kiểm thử là GIẢ.
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+const mailMau = ` Fast e-Invoice
+
+Kính gửi *(Dear)*: CÔNG TY TNHH PHÂN PHỐI SỈ & LẺ SẢN PHẨM CÔNG NGHỆ ĐIỆN MÁY VIP
+
+CÔNG TY TNHH THƯƠNG MẠI - DỊCH VỤ KHƯƠNG VIỆT xin gửi cho Quý khách thông tin hóa đơn điện tử *(We would like to send you e-invoice information as below)*:
+Số hóa đơn *(Invoice Number)*: * 1158*
+Ký hiệu hóa đơn *(Serial Number)*: *C26TKV*
+Mẫu số hóa đơn *(Invoice Form)*: *1*
+
+Để tra cứu hóa đơn, quý khách vui lòng truy cập vào đường dẫn *(For more details please access the link)*: [https://einvoice.fast.com.vn](https://einvoice.fast.com.vn/index.aspx?c=AAAAKEY=000780)
+Mã số để tra cứu hóa đơn là *(Secure Key for searching)*: *AAAAKEY=000780*
+Xem bản thể hiện của hóa đơn điện tử *(To view the printable file)*[ Nhấn vào đây *(click here)*](https://einvoice.fast.com.vn/index.aspx?type=1&c=AAAAKEY=000780&hash=HASH1)
+Để tải tệp thông tin hóa đơn điện tử *(To download the XML file)*[ Nhấn vào đây *(click here)*](https://einvoice.fast.com.vn/index.aspx?type=2&c=AAAAKEY=000780&hash=HASH1)
+Để tải tệp bản thể hiện của hóa đơn điện tử *(To download the PDF file)*[ Nhấn vào đây *(click here)*](https://einvoice.fast.com.vn/index.aspx?type=3&c=AAAAKEY=000780&hash=HASH1)
+`
+
+func TestDocEmailFast(t *testing.T) {
+	hd := DocEmailFast(mailMau)
+	if hd == nil {
+		t.Fatal("không đọc được email")
+	}
+	if hd.So != "1158" || hd.KyHieu != "C26TKV" || hd.MauSo != "1" || hd.MaTraCuu != "AAAAKEY=000780" {
+		t.Errorf("sai: %+v", hd)
+	}
+	if hd.NCC != "CÔNG TY TNHH THƯƠNG MẠI - DỊCH VỤ KHƯƠNG VIỆT" {
+		t.Errorf("NCC sai: %q", hd.NCC)
+	}
+	if hd.LinkXML != "https://einvoice.fast.com.vn/index.aspx?type=2&c=AAAAKEY=000780&hash=HASH1" || hd.LinkPDF == "" || hd.LinkTraCuu == "" {
+		t.Errorf("link sai: %+v", hd)
+	}
+	if !khopNCC(hd, "KHUONG VIET", "") || khopNCC(hd, "DUY DUC", "") {
+		t.Error("lọc NCC sai")
+	}
+	if DocEmailFast("xin chào, không phải hoá đơn") != nil {
+		t.Error("phải trả nil")
+	}
+}
+
+const xmlMau = `<?xml version="1.0" encoding="UTF-8"?>
+<HDon><DLHDon Id="data"><TTChung><KHMSHDon>1</KHMSHDon><KHHDon>C26TKV</KHHDon><SHDon>1158</SHDon><NLap>2026-09-10</NLap></TTChung>
+<NDHDon><NBan><Ten>CÔNG TY TNHH THƯƠNG MẠI - DỊCH VỤ KHƯƠNG VIỆT</Ten><MST>0300000000</MST></NBan><NMua><Ten>ĐIỆN MÁY VIP</Ten></NMua>
+<DSHHDVu><HHDVu><STT>1</STT><THHDVu>Điện thoại Samsung Galaxy A07 4GB/64GB Đen</THHDVu><DVTinh>Cái</DVTinh><SLuong>2</SLuong><DGia>1000000</DGia><ThTien>2000000</ThTien></HHDVu>
+<HHDVu><STT>2</STT><THHDVu>Máy tính bảng Samsung Tab A11 WiFi X133</THHDVu><DVTinh>Cái</DVTinh><SLuong>1</SLuong><DGia>900000.00</DGia><ThTien>900000</ThTien></HHDVu></DSHHDVu>
+<TToan><TgTCThue>2900000</TgTCThue><TgTThue>290000</TgTThue><TgTTTBSo>3190000</TgTTTBSo></TToan></NDHDon></DLHDon></HDon>`
+
+func TestDocXMLHoaDon(t *testing.T) {
+	hd := &HoaDon{Nguon: "email", LinkXML: "x"}
+	if err := DocXMLHoaDon([]byte(xmlMau), hd); err != nil {
+		t.Fatal(err)
+	}
+	if hd.So != "1158" || hd.KyHieu != "C26TKV" || hd.NgayLap != "10/09/2026" || hd.MST != "0300000000" || hd.TongTT != 3190000 || hd.Thue != 290000 {
+		t.Errorf("đầu hoá đơn sai: %+v", hd)
+	}
+	if len(hd.Dong) != 2 || hd.Dong[0].SL != 2 || hd.Dong[0].DonGia != 1000000 || hd.Dong[1].DonGia != 900000 || hd.Dong[1].Ten == "" {
+		t.Errorf("dòng sai: %+v", hd.Dong)
+	}
+	if hd.TrangThai != "da-doc" || hd.LinkXML != "x" {
+		t.Errorf("trạng thái/link sai: %+v", hd)
+	}
+}
+
+func TestDocTepVaLocNCC(t *testing.T) {
+	d := t.TempDir()
+	p := filepath.Join(d, "hd.xml")
+	os.WriteFile(p, []byte(xmlMau), 0o644)
+	if _, err := DocTepHoaDon(p, "KHUONG VIET", ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DocTepHoaDon(p, "LONG HUNG", ""); err == nil {
+		t.Error("phải loại NCC khác")
+	}
+	if _, err := DocTepHoaDon(p, "", "0300000000"); err != nil {
+		t.Error("MST khớp phải nhận")
+	}
+	ket := QuetThuMuc([]string{d})
+	if len(ket) != 1 || ket[0].Duong != p {
+		t.Errorf("quét sai: %+v", ket)
+	}
+}
+
+func TestDanhSachLink(t *testing.T) {
+	ds, err := DocDanhSachLink([]byte(`[{"NCC":"CÔNG TY TNHH THƯƠNG MẠI - DỊCH VỤ KHƯƠNG VIỆT","So":"5117","KyHieu":"c24tkv","EmailNgay":"20/11/2024","LinkXML":"https://x/2","LinkPDF":"https://x/3"}]`))
+	if err != nil || len(ds) != 1 || ds[0].KyHieu != "C24TKV" || ds[0].Nguon != "bridge" || ds[0].LinkPDF == "" {
+		t.Fatalf("sai: %v %+v", err, ds)
+	}
+}
+
+func TestDoiChieu(t *testing.T) {
+	bg := []DongGia{
+		{TenHang: "A07 (4/64)", CauHinh: "4/64", Ngay: "13/10/2026", SLMin: 1, DonGia: 1100000, LoaiHang: DaKich},
+		{TenHang: "A07 (4/64)", CauHinh: "4/64", Ngay: "06/10/2026", SLMin: 1, DonGia: 1050000, LoaiHang: DaKich},
+		{TenHang: "A07 (4/64)", CauHinh: "4/64", Ngay: "06/10/2026", SLMin: 10, DonGia: 1000000, LoaiHang: DaKich},
+		{TenHang: "Tab A11 4G (4/64)", Model: "X135", CauHinh: "4/64", Ngay: "13/10/2026", SLMin: 1, DonGia: 900000},
+		{TenHang: "Tab A11 Wifi (4/64)", Model: "X133", CauHinh: "4/64", Ngay: "13/10/2026", SLMin: 1, DonGia: 800000},
+	}
+	g := DoiChieu(DongHD{Ten: "Điện thoại Samsung Galaxy A07 4GB/64GB Đen"}, "08/10/2026", bg)
+	if g == nil || g.Ngay != "06/10/2026" || g.SLMin != 1 {
+		t.Errorf("đối chiếu A07 sai: %+v", g)
+	}
+	g = DoiChieu(DongHD{Ten: "Máy tính bảng Samsung Tab A11 WiFi X133"}, "10/09/2026", bg)
+	if g == nil || g.Model != "X133" {
+		t.Errorf("đối chiếu X133 sai: %+v", g)
+	}
+	if DoiChieu(DongHD{Ten: "Củ sạc 25W"}, "10/09/2026", bg) != nil {
+		t.Error("không có model phải trả nil")
+	}
+}
+
+func TestDocNoiDungMail(t *testing.T) {
+	raw := "From: a@b\r\nSubject: x\r\nContent-Type: multipart/alternative; boundary=\"BB\"\r\n\r\n--BB\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>S=E1=BB=91 h=C3=B3a =C4=91=C6=A1n: 77 <a href=3D\"https://einvoice.fast.com.vn/index.aspx?type=3D2&amp;c=3DK&amp;hash=3DH\">t=E1=BA=A3i</a></p>\r\n--BB--\r\n"
+	txt := DocNoiDungMail(raw)
+	if !containsAll(txt, "Số hóa đơn: 77", "https://einvoice.fast.com.vn/index.aspx?type=2&c=K&hash=H") {
+		t.Errorf("đọc MIME sai: %q", txt)
+	}
+	hd := DocEmailFast(txt)
+	if hd == nil || hd.So != "77" || hd.LinkXML == "" {
+		t.Errorf("email từ HTML sai: %+v", hd)
+	}
+}
+
+func containsAll(s string, cac ...string) bool {
+	for _, c := range cac {
+		if !contains(s, c) {
+			return false
+		}
+	}
+	return true
+}
+func contains(s, sub string) bool {
+	return len(sub) == 0 || (len(s) >= len(sub) && indexOf(s, sub) >= 0)
+}
+func indexOf(s, sub string) int {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return i
+		}
+	}
+	return -1
+}
