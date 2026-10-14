@@ -40,6 +40,7 @@ type HoaDon struct {
 	NgayLap    string   `json:"ngayLap"` // dd/mm/yyyy
 	NCC        string   `json:"ncc"`
 	MST        string   `json:"mst"`
+	MaCQT      string   `json:"maCQT"` // mã cơ quan thuế
 	TienHang   int64    `json:"tienHang"`
 	Thue       int64    `json:"thue"`
 	TongTT     int64    `json:"tongTT"`
@@ -61,8 +62,9 @@ type CauHinhHDDT struct {
 	EverythingURL string   `json:"everythingURL"` // vd http://127.0.0.1:8080
 	ThuMucQuet    []string `json:"thuMucQuet"`
 	ThuMucBridge  string   `json:"thuMucBridge"` // G:\My Drive\DMV-Cloud-Bridge
-	LocNCC        string   `json:"locNCC"`       // tên NCC để lọc (không dấu, vd KHUONG VIET)
-	MSTNCC        string   `json:"mstNCC"`
+	LocNCC        string   `json:"locNCC"`       // danh sách tên NCC lọc, cách nhau dấu phẩy
+	MSTNCC        string   `json:"mstNCC"`       // danh sách MST, cách nhau dấu phẩy
+	NguoiGuiHDDT  string   `json:"nguoiGuiHDDT"` // địa chỉ gửi HĐĐT cho IMAP, cách nhau dấu phẩy
 	IMAPUser      string   `json:"imapUser"`
 	IMAPMatKhau   string   `json:"imapMatKhau"` // mật khẩu ứng dụng Google
 	IMAPTuNgay    string   `json:"imapTuNgay"`  // dd/mm/yyyy
@@ -73,7 +75,8 @@ func cauHinhMacDinh() CauHinhHDDT {
 		EverythingURL: "http://127.0.0.1:8080",
 		ThuMucQuet:    []string{`D:\VIP DATA\03 Ke Toan HDDT`, filepath.Join(os.Getenv("USERPROFILE"), "Downloads")},
 		ThuMucBridge:  `G:\My Drive\DMV-Cloud-Bridge`,
-		LocNCC:        "KHUONG VIET",
+		LocNCC:        "KHUONG VIET, TCT, LONG HUNG, THANH LIEM",
+		NguoiGuiHDDT:  "einvoice@fastsoftware.com.vn, no-reply@meinvoice.vn, hddt@longhungmobile.com, ctythanhliem1.ct@gmail.com",
 		IMAPUser:      "vinh@dienmayvip.com",
 		IMAPTuNgay:    "01/01/2024",
 	}
@@ -89,6 +92,64 @@ var (
 	reMaTC     = regexp.MustCompile(`(?i)Secure Key for searching\)\*?:\s*\*?\s*([A-Za-z0-9+/=]+)`)
 	reNguoiBan = regexp.MustCompile(`(?m)^\s*\*?\s*(CÔNG TY[^\n*]+?)\s*\*?\s*xin gửi cho Quý khách`)
 )
+
+var (
+	reMisaSo    = regexp.MustCompile(`(?i)Số:\s*\*?\s*([0-9]+)`)
+	reMisaNgay  = regexp.MustCompile(`(?i)Ngày:\s*\*?\s*(\d{2}/\d{2}/\d{4})`)
+	reMisaKH    = regexp.MustCompile(`(?i)Ký hiệu:\s*\*?\s*([A-Z0-9]+)`)
+	reMisaMaCQT = regexp.MustCompile(`(?i)Mã (?:của )?cơ quan thuế:\s*\*?\s*([A-Z0-9-]+)`)
+	reMisaSC    = regexp.MustCompile(`(?i)meinvoice\.vn/tra-cuu/\?sc=([A-Z0-9_]+)`)
+	reMisaMaTC  = regexp.MustCompile(`(?i)nhập mã số:\s*\*?\s*([A-Z0-9_]{8,})`)
+	reMisaNBan  = regexp.MustCompile(`(?m)^\s*\*?\s*(CÔNG TY[^\n*]+?)\s+thông báo gửi Hóa đơn`)
+)
+
+// DocEmailMISA đọc email meinvoice.vn (TCT, Long Hưng, Thanh Liêm…). Link tải dựng từ mã tra cứu.
+func DocEmailMISA(noiDung string) *HoaDon {
+	if !strings.Contains(noiDung, "meinvoice.vn") {
+		return nil
+	}
+	m := reMisaSo.FindStringSubmatch(noiDung)
+	if m == nil {
+		return nil
+	}
+	hd := &HoaDon{So: strings.TrimLeft(m[1], "0"), Nguon: "email", TrangThai: "moi"}
+	if hd.So == "" {
+		hd.So = m[1]
+	}
+	if k := reMisaNgay.FindStringSubmatch(noiDung); k != nil {
+		hd.NgayLap = k[1]
+	}
+	if k := reMisaKH.FindStringSubmatch(noiDung); k != nil {
+		hd.KyHieu = strings.ToUpper(k[1])
+	}
+	if k := reMisaMaCQT.FindStringSubmatch(noiDung); k != nil {
+		hd.MaCQT = k[1]
+	}
+	if k := reMisaNBan.FindStringSubmatch(noiDung); k != nil {
+		hd.NCC = strings.TrimSpace(k[1])
+	}
+	sc := ""
+	if k := reMisaSC.FindStringSubmatch(noiDung); k != nil {
+		sc = strings.ToUpper(k[1])
+	} else if k := reMisaMaTC.FindStringSubmatch(noiDung); k != nil {
+		sc = strings.ToUpper(k[1])
+	}
+	if sc != "" {
+		hd.MaTraCuu = sc
+		hd.LinkTraCuu = "https://www.meinvoice.vn/tra-cuu/?sc=" + sc
+		hd.LinkXML = "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=" + sc
+		hd.LinkPDF = "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=pdf&Code=" + sc
+	}
+	return hd
+}
+
+// DocEmail nhận diện định dạng (Fast e-Invoice hoặc MISA meinvoice).
+func DocEmail(noiDung string) *HoaDon {
+	if hd := DocEmailFast(noiDung); hd != nil {
+		return hd
+	}
+	return DocEmailMISA(noiDung)
+}
 
 // DocEmailFast đọc nội dung (text) email Fast e-Invoice. Trả về nil nếu không phải.
 func DocEmailFast(noiDung string) *HoaDon {
@@ -276,6 +337,9 @@ func DocXMLHoaDon(b []byte, hd *HoaDon) error {
 	if k := goc.chu("NLap", "NgayHD", "NgayLap", "InvoiceDate", "ArisingDate"); k != "" {
 		hd.NgayLap = ngayVN(k)
 	}
+	if k := goc.chu("MCCQT", "MaCQT", "TaxAuthorityCode"); k != "" {
+		hd.MaCQT = k
+	}
 	if nb := goc.tim("NBan", "SellerInfo", "NguoiBan", "Seller"); nb != nil {
 		hd.NCC = nb.chu("Ten", "TenDonVi", "SellerLegalName", "Name")
 		hd.MST = nb.chu("MST", "MaSoThue", "SellerTaxCode", "TaxCode")
@@ -349,8 +413,8 @@ func TaiHoaDon(hd *HoaDon, thuMuc string) error {
 		b, ct, err := taiTep(hd.LinkXML)
 		if err != nil {
 			loi = append(loi, "XML: "+err.Error())
-		} else if strings.Contains(strings.ToLower(ct), "text/html") && !bytes.Contains(b, []byte("<HDon")) && !bytes.Contains(b, []byte("<?xml")) {
-			loi = append(loi, "XML: máy chủ trả về trang web (cần mở link tra cứu, nhập mã xác thực rồi tải thủ công)")
+		} else if (strings.Contains(strings.ToLower(ct), "text/html") || bytes.Contains(bytes.ToLower(b[:min(len(b), 600)]), []byte("<html"))) && !bytes.Contains(b, []byte("<HDon")) {
+			loi = append(loi, "XML: máy chủ trả về trang web (mở link Tra cứu, nhập mã rồi tải thủ công vào thư mục quét)")
 		} else {
 			duoi := ".xml"
 			if bytes.HasPrefix(b, []byte("PK")) {
@@ -508,20 +572,40 @@ func DocTepHoaDon(duong, locNCC, mst string) (*HoaDon, error) {
 	return hd, nil
 }
 
+// khopNCC: locNCC là danh sách tên (không dấu) cách nhau dấu phẩy; mst là danh sách MST cách nhau dấu phẩy.
 func khopNCC(hd *HoaDon, locNCC, mst string) bool {
-	if mst != "" && hd.MST != "" {
-		return hd.MST == mst
+	for _, m := range tachDS(mst) {
+		if hd.MST != "" && hd.MST == m {
+			return true
+		}
 	}
-	if locNCC == "" {
+	ds := tachDS(locNCC)
+	if len(ds) == 0 {
 		return true
 	}
-	return strings.Contains(strings.ToUpper(boDau(hd.NCC)), strings.ToUpper(boDau(locNCC)))
+	ten := strings.ToUpper(boDau(hd.NCC))
+	for _, l := range ds {
+		if strings.Contains(ten, strings.ToUpper(boDau(l))) {
+			return true
+		}
+	}
+	return false
+}
+
+func tachDS(s string) []string {
+	var ket []string
+	for _, x := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ';' || r == '|' }) {
+		if x = strings.TrimSpace(x); x != "" {
+			ket = append(ket, x)
+		}
+	}
+	return ket
 }
 
 // ---------- Danh sách link từ Bridge (phiên Claude Cloud ghi) ----------
 
 type linkHDDT struct {
-	NCC, So, KyHieu, MauSo, EmailNgay, LinkTraCuu, MaTraCuu, LinkXML, LinkPDF string
+	NCC, So, KyHieu, MauSo, NgayLap, MaCQT, EmailNgay, LinkTraCuu, MaTraCuu, LinkXML, LinkPDF string
 }
 
 func DocDanhSachLink(b []byte) ([]*HoaDon, error) {
@@ -538,8 +622,12 @@ func DocDanhSachLink(b []byte) ([]*HoaDon, error) {
 		if l.So == "" {
 			continue
 		}
+		if l.MaTraCuu != "" && l.LinkXML == "" && strings.Contains(l.LinkTraCuu, "meinvoice") {
+			l.LinkXML = "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=" + l.MaTraCuu
+			l.LinkPDF = "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=pdf&Code=" + l.MaTraCuu
+		}
 		ket = append(ket, &HoaDon{So: strings.TrimLeft(l.So, "0"), KyHieu: strings.ToUpper(l.KyHieu), MauSo: l.MauSo, NCC: l.NCC,
-			EmailNgay: l.EmailNgay, LinkTraCuu: l.LinkTraCuu, MaTraCuu: l.MaTraCuu, LinkXML: l.LinkXML, LinkPDF: l.LinkPDF,
+			NgayLap: l.NgayLap, MaCQT: l.MaCQT, EmailNgay: l.EmailNgay, LinkTraCuu: l.LinkTraCuu, MaTraCuu: l.MaTraCuu, LinkXML: l.LinkXML, LinkPDF: l.LinkPDF,
 			Nguon: "bridge", TrangThai: "moi"})
 	}
 	return ket, nil

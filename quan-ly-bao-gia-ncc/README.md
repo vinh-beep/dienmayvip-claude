@@ -22,14 +22,21 @@ tự mở giao diện tại `http://127.0.0.1:8765/`. Dữ liệu (có giá nh�
 
 ## Tab HĐĐT NCC (hoá đơn điện tử)
 
-Khương Việt phát hành hoá đơn qua **Fast e-Invoice**: email từ `einvoice@fastsoftware.com.vn`
-không đính kèm tệp, chỉ có link tải XML (`type=2`) và PDF (`type=3`). App tìm hoá đơn theo 4 cách,
-nguồn nào cũng gộp theo (Ký hiệu, Số HĐ), không trùng:
+Hỗ trợ 2 định dạng email HĐĐT, lọc được nhiều NCC cùng lúc (Cấu hình → Lọc NCC, cách nhau dấu phẩy):
+
+| NCC | Hệ thống | Email | Cách lấy tệp |
+|---|---|---|---|
+| Khương Việt | Fast e-Invoice | `einvoice@fastsoftware.com.vn` | link `type=2` (XML) / `type=3` (PDF) trong thư |
+| TCT | MISA meinvoice | `no-reply@meinvoice.vn` | mã tra cứu `sc=` → `DownloadHandler.ashx?Type=xml/pdf&Code=` |
+| Long Hưng | MISA meinvoice | `hddt@longhungmobile.com` | như TCT |
+| Thanh Liêm I | MISA meinvoice | `ctythanhliem1.ct@gmail.com` | thư **đính kèm sẵn** XML + PDF (IMAP lấy thẳng), hoặc mã tra cứu |
+
+App tìm hoá đơn theo 4 cách, nguồn nào cũng gộp theo (Ký hiệu, Số HĐ), không trùng:
 
 | Nút | Cách hoạt động | Cần gì |
 |---|---|---|
 | **1. Nạp từ Bridge (AI Cloud)** | Phiên Claude Cloud quét Gmail vinh@dienmayvip.com, ghi `hddt-links-*.json` (số HĐ, ký hiệu, link tải) lên Drive Bridge; app đọc tệp đó từ `G:\My Drive\DMV-Cloud-Bridge` | Drive for desktop đang chạy |
-| **2. Tìm trong Gmail (IMAP)** | App tự đăng nhập IMAP, tìm thư Fast e-Invoice của NCC đang lọc | Gmail bật IMAP + *Mật khẩu ứng dụng* Google (nhập trong Cấu hình) |
+| **2. Tìm trong Gmail (IMAP)** | App tự đăng nhập IMAP, tìm thư từ các địa chỉ "Người gửi HĐĐT" trong Cấu hình, đọc link và lưu luôn tệp đính kèm | Gmail bật IMAP + *Mật khẩu ứng dụng* Google (nhập trong Cấu hình) |
 | **3. Tìm bằng Everything** | Hỏi Everything HTTP server tìm `.xml/.zip/.pdf` tên có khuongviet/hoadon/hddt/C2*TKV…; đọc XML, gắn PDF theo số HĐ | Everything: Tools → Options → HTTP Server → bật, cổng 8080 (hoặc `es.exe` trong PATH) |
 | **4. Quét thư mục** | Duyệt thư mục trong Cấu hình (mặc định `D:\VIP DATA\03 Ke Toan HDDT` và Downloads) | — |
 | **Dán email** | Dán nội dung email Fast e-Invoice (Ctrl+A, Ctrl+C trong Gmail) | — |

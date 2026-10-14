@@ -147,3 +147,53 @@ func indexOf(s, sub string) int {
 	}
 	return -1
 }
+
+const mailMISA = `CÔNG TY TNHH ĐẦU TƯ & PHÂN PHỐI THIẾT BỊ VIỄN THÔNG LONG HƯNG thông báo gửi Hóa đơn giá trị gia tăng cho Quý khách
+*Kính gửi: Quý khách DIENMAYVIP*
+CÔNG TY TNHH ĐẦU TƯ & PHÂN PHỐI THIẾT BỊ VIỄN THÔNG LONG HƯNG xin gửi cho Quý khách Hóa đơn giá trị gia tăng với các thông tin như sau:
+
+* Số: *00002146*
+* Ngày: *06/10/2026*
+* Ký hiệu: *1C26TLH*
+* Mã của cơ quan thuế: *005EB2E807066A41C88D2CBCDE137A0159*
+
+TRA CỨU ( https://www.meinvoice.vn/tra-cuu/?sc=7NFQCJ35K6PL&m=vinh@dienmayvip.com&n=DIENMAYVIP&c=&b=&d=0&t=1&r=1 )
+Hoặc truy cập vào đường dẫn https://www.meinvoice.vn/tra-cuu và nhập mã số: *7NFQCJ35K6PL*
+`
+
+func TestDocEmailMISA(t *testing.T) {
+	hd := DocEmail(mailMISA)
+	if hd == nil {
+		t.Fatal("không đọc được email MISA")
+	}
+	if hd.So != "2146" || hd.KyHieu != "1C26TLH" || hd.NgayLap != "06/10/2026" || hd.MaCQT != "005EB2E807066A41C88D2CBCDE137A0159" || hd.MaTraCuu != "7NFQCJ35K6PL" {
+		t.Errorf("sai: %+v", hd)
+	}
+	if hd.NCC != "CÔNG TY TNHH ĐẦU TƯ & PHÂN PHỐI THIẾT BỊ VIỄN THÔNG LONG HƯNG" {
+		t.Errorf("NCC sai: %q", hd.NCC)
+	}
+	if hd.LinkXML != "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=7NFQCJ35K6PL" || hd.LinkTraCuu == "" {
+		t.Errorf("link sai: %+v", hd)
+	}
+	if !khopNCC(hd, "KHUONG VIET, TCT, LONG HUNG, THANH LIEM", "") || khopNCC(hd, "KHUONG VIET, TCT", "") {
+		t.Error("lọc nhiều NCC sai")
+	}
+	// TCT dạng bảng "| Số: 00020588 |"
+	tct := "CÔNG TY TNHH THƯƠNG MẠI ĐIỆN TỬ TCT thông báo gửi Hóa đơn giá trị gia tăng cho Quý khách\n| Số: 00020588 |\n| Ngày: 13/10/2026 |\n| Ký hiệu: 1C26TTC |\n[Tra cứu](https://www.meinvoice.vn/tra-cuu/?sc=DQF8CE6Q6GKD&m=x)\n"
+	hd = DocEmail(tct)
+	if hd == nil || hd.So != "20588" || hd.KyHieu != "1C26TTC" || hd.MaTraCuu != "DQF8CE6Q6GKD" || !khopNCC(hd, "TCT", "") {
+		t.Errorf("TCT sai: %+v", hd)
+	}
+	ds := tachKhoiEmail(mailMISA + "\n\n" + tct + "\n" + mailMau)
+	if len(ds) != 3 {
+		t.Errorf("tách khối sai: %d", len(ds))
+	}
+}
+
+func TestDocThuDinhKem(t *testing.T) {
+	raw := "From: a@b\r\nSubject: x\r\nContent-Type: multipart/mixed; boundary=\"BB\"\r\n\r\n--BB\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nxin chao\r\n--BB\r\nContent-Type: text/xml; name=\"1C26MTL_00001972.xml\"\r\nContent-Disposition: attachment; filename=\"1C26MTL_00001972.xml\"\r\nContent-Transfer-Encoding: base64\r\n\r\nPEhEb24+PC9IRG9uPg==\r\n--BB--\r\n"
+	th := DocThu(raw)
+	if th.Text == "" || len(th.DinhKem) != 1 || th.DinhKem[0].Ten != "1C26MTL_00001972.xml" || string(th.DinhKem[0].Du) != "<HDon></HDon>" {
+		t.Errorf("đính kèm sai: %+v", th)
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -52,13 +53,13 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		}
 		c := kho.LayCauHinh()
 		var ds []*HoaDon
-		for _, khoi := range strings.Split(vao.VanBan, "Fast e-Invoice") {
-			if hd := DocEmailFast(khoi); hd != nil && (hd.NCC == "" || khopNCC(hd, c.LocNCC, "")) {
+		for _, khoi := range tachKhoiEmail(vao.VanBan) {
+			if hd := DocEmail(khoi); hd != nil && (hd.NCC == "" || khopNCC(hd, c.LocNCC, "")) {
 				ds = append(ds, hd)
 			}
 		}
 		if len(ds) == 0 {
-			loi(w, errors.New("không thấy hoá đơn Fast e-Invoice của NCC đang lọc trong nội dung dán"))
+			loi(w, errors.New("không thấy hoá đơn (Fast e-Invoice / meinvoice) của NCC đang lọc trong nội dung dán"))
 			return
 		}
 		n, err := kho.ThemHoaDon(ds)
@@ -116,21 +117,61 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 			loi(w, errors.New("chưa có tài khoản/mật khẩu ứng dụng IMAP trong Cấu hình"))
 			return
 		}
-		thu, err := TimEmailFastIMAP(c.IMAPUser, c.IMAPMatKhau, c.IMAPTuNgay, 300)
+		thu, err := TimEmailHDDTIMAP(c.IMAPUser, c.IMAPMatKhau, c.NguoiGuiHDDT, c.IMAPTuNgay, 500)
 		if err != nil {
 			loi(w, err)
 			return
 		}
 		var ds []*HoaDon
+		dinhKem := 0
 		for _, t := range thu {
-			if hd := DocEmailFast(t); hd != nil && khopNCC(hd, c.LocNCC, "") {
-				hd.Nguon = "imap"
-				ds = append(ds, hd)
+			hd := DocEmail(t.Text)
+			if hd == nil {
+				// thư chỉ có đính kèm XML: đọc thẳng
+				for _, d := range t.DinhKem {
+					if strings.HasSuffix(strings.ToLower(d.Ten), ".pdf") {
+						continue
+					}
+					x := &HoaDon{Nguon: "imap", TrangThai: "moi"}
+					if DocXMLHoaDon(d.Du, x) == nil && khopNCC(x, c.LocNCC, c.MSTNCC) {
+						hd = x
+						break
+					}
+				}
+				if hd == nil {
+					continue
+				}
 			}
+			if !khopNCC(hd, c.LocNCC, "") {
+				continue
+			}
+			hd.Nguon = "imap"
+			// lưu đính kèm
+			tm := filepath.Join(thuMucHD, tenThuMuc(hd.NCC))
+			for _, d := range t.DinhKem {
+				_ = os.MkdirAll(tm, 0o755)
+				duoi := strings.ToLower(filepath.Ext(d.Ten))
+				p := filepath.Join(tm, tenTepHD(hd, duoi))
+				if err := os.WriteFile(p, d.Du, 0o644); err != nil {
+					continue
+				}
+				dinhKem++
+				if duoi == ".pdf" {
+					hd.TepPDF = p
+				} else {
+					hd.TepXML = p
+					_ = DocXMLHoaDon(d.Du, hd)
+				}
+			}
+			ds = append(ds, hd)
 		}
 		n, err := kho.ThemHoaDon(ds)
 		if err == nil && len(ds) == 0 {
-			traJSON(w, map[string]any{"moi": 0, "tong": 0, "thongBao": fmt.Sprintf("Đọc %d thư Fast e-Invoice, không có thư nào của %s", len(thu), c.LocNCC)})
+			traJSON(w, map[string]any{"moi": 0, "tong": 0, "thongBao": fmt.Sprintf("Đọc %d thư HĐĐT, không có thư nào của NCC đang lọc (%s)", len(thu), c.LocNCC)})
+			return
+		}
+		if err == nil {
+			traJSON(w, map[string]any{"moi": n, "tong": len(ds), "thongBao": fmt.Sprintf("Đọc %d thư, %d hoá đơn của NCC đang lọc, %d mới, %d tệp đính kèm đã lưu", len(thu), len(ds), n, dinhKem)})
 			return
 		}
 		traKetQua(w, n, len(ds), err)
@@ -143,7 +184,13 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		_ = doc(r, &vao)
 		tv := vao.TruyVan
 		if tv == "" {
-			tv = `ext:xml;zip;pdf ` + strings.ToLower(strings.ReplaceAll(c.LocNCC, " ", "")) + `|khuongviet|"khuong viet"|hoadon|"hoa don"|hddt|invoice|C2*TKV`
+			var tu []string
+			for _, n := range tachDS(c.LocNCC) {
+				n = strings.ToLower(boDau(n))
+				tu = append(tu, strings.ReplaceAll(n, " ", ""), `"`+n+`"`)
+			}
+			tu = append(tu, "hoadon", `"hoa don"`, "hddt", "invoice", "*C2?T*", "*C2?M*", "1C2*", "C2*")
+			tv = `ext:xml;zip;pdf ` + strings.Join(tu, "|")
 		}
 		var tep []ketQuaTep
 		var err error
@@ -315,6 +362,22 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		}
 		cw.Flush()
 	})
+}
+
+// tachKhoiEmail tách văn bản dán nhiều email thành từng thư (cắt tại tiêu đề mỗi thư).
+func tachKhoiEmail(s string) []string {
+	re := regexp.MustCompile(`(?m)^.*(Fast e-Invoice|thông báo gửi Hóa đơn)`)
+	viTri := re.FindAllStringIndex(s, -1)
+	var ket []string
+	bat := 0
+	for i, v := range viTri {
+		if i == 0 || v[0]-bat < 150 {
+			continue
+		}
+		ket = append(ket, s[bat:v[0]])
+		bat = v[0]
+	}
+	return append(ket, s[bat:])
 }
 
 func traKetQua(w http.ResponseWriter, moi, tong int, err error) {
