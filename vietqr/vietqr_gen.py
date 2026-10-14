@@ -1,5 +1,6 @@
 """Tạo mã VietQR (chuẩn Napas 247) tĩnh cho từng tài khoản trong accounts.json.
-Chạy: python vietqr_gen.py  -> ra PNG trong thư mục out/
+Chạy: python vietqr_gen.py  -> QR tĩnh cho mọi TK, ra out/
+QR theo đơn: python vietqr_gen.py --don ACB 42400000 "noi dung CK"  -> out/don-hang/ (không commit, có tên khách)
 Chỉ chứa thông tin NHẬN TIỀN (mã NH + STK). Không có số dư/giá vốn."""
 import json, pathlib, qrcode
 from PIL import Image, ImageDraw, ImageFont
@@ -47,8 +48,17 @@ def make(acc, out):
     canvas.save(out)
 
 if __name__ == "__main__":
+    import sys, time
     here = pathlib.Path(__file__).parent
     out = here / "out"; out.mkdir(exist_ok=True)
-    for a in json.loads((here / "accounts.json").read_text(encoding="utf-8")):
+    accounts = json.loads((here / "accounts.json").read_text(encoding="utf-8"))
+    if len(sys.argv) == 5 and sys.argv[1] == "--don":
+        a = next(x for x in accounts if x["code"] == sys.argv[2].upper())
+        a = dict(a, amount=int(sys.argv[3]), note=sys.argv[4])
+        d = out / "don-hang"; d.mkdir(exist_ok=True)
+        f = d / f"VietQR_{a['code']}_{a['amount']}_{time.strftime('%d %m %Y %Hh%Mp')}.png"
+        make(a, f); print("OK", f.name, "|", payload(a["bin"], a["stk"], a["amount"], a["note"]))
+        sys.exit()
+    for a in accounts:
         f = out / f"VietQR_{a['code']}_{a['stk']}.png"
         make(a, f); print("OK", f.name, "|", payload(a["bin"], a["stk"]))
