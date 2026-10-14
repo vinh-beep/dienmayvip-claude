@@ -1,0 +1,31 @@
+{
+  "_ghi_chu": "Các tên cột đánh dấu CAN_XAC_NHAN là dự đoán hợp lý; script tự kiểm cột có tồn tại trước khi ghi, sai thì dừng. Chạy CHAY_01_KHAM_PHA.bat để xem tên thật rồi sửa ở đây.",
+  "sql": {
+    "server": "192.168.1.200",
+    "database": "MyBizMan_DienMayVIP"
+  },
+  "file_lo": "C:\\Users\\Win10\\Desktop\\Parent SKU\\Lo Gia Si Lan Dau 22 09 2026 06h06p.xlsx",
+  "thu_muc_ket_qua": "C:\\Users\\Win10\\Desktop\\Parent SKU",
+  "thu_muc_log": "C:\\Users\\Win10\\Desktop\\Parent SKU\\AutoSync\\log",
+  "lo": {
+    "so_ma_mong_doi": 278,
+    "lai_toi_da": 0.10,
+    "cot_ma": null,
+    "cot_gia_si": null,
+    "cot_lai_tren_von": null,
+    "loai_tru_ma": []
+  },
+  "mathang": {
+    "cot_ma": "MHCODE",
+    "cot_ten": "MHTEN",
+    "cot_gia_le": "GIABAN"
+  },
+  "dmv_gisi": {
+    "bang": "dmv_GiaSi",
+    "cot_ma": "MHCODE",
+    "cot_gia": "GiaSi",
+    "cot_them": {
+      "Nguon": "LO_LAN_DAU"
+    }
+  }
+}
