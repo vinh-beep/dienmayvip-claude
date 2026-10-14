@@ -1,0 +1,17 @@
+{
+  "_ghi_chu": "Sao chép thành phieu_ban.config.json (KHÔNG đưa lên GitHub). Ô nào còn trống thì app chạy chế độ nhập tay. Điền tên cột theo kết quả do_cot.sql, KHÔNG đoán.",
+  "server": "",
+  "database": "",
+  "bang_phieu": "BANHOADON",
+  "cot_id": "BHDID",
+  "cot_so_phieu": "BHDCODE",
+  "cot_ngay": "NGAYHD",
+  "cot_khach_id": "",
+  "cot_tong_tien": "",
+  "bang_chi_tiet": "BANCTHOADON",
+  "cot_ct_phieu_id": "",
+  "cot_ct_mh_id": "",
+  "cot_mh_ten": "",
+  "so_ngay": 30,
+  "mau_noi_dung": "{KHACH} thanh toan tien hang {SP} {SOTIEN}"
+}

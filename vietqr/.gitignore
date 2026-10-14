@@ -1,0 +1,5 @@
+out/don-hang/
+phieu_ban.config.json
+build/
+dist/
+*.spec
