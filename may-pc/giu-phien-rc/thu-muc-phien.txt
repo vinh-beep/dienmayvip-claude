@@ -1,0 +1,4 @@
+# Moi dong 1 thu muc lam viec cho 1 phien Remote Control. Toi da 5 dong (de du RAM).
+# Dong bat dau bang # la ghi chu. Vi du:
+# C:\Users\Win10\Desktop\Claude Code Sync All Session
+# D:\API Nhanh vn

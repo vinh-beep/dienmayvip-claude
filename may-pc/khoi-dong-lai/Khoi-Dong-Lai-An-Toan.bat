@@ -1,0 +1,6 @@
+@echo off
+rem Bam dup THAY CHO Start > Restart: dong em Claude/node/WSL roi khoi dong lai sau 10 giay.
+cd /d "%~dp0"
+net session >nul 2>&1
+if %errorlevel% neq 0 ( powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs" & exit /b )
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Khoi-Dong-Lai.ps1" -KhoiDong

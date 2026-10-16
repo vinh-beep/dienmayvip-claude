@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Điện Máy VIP — Nhân viên</title>
+<style>
+  :root { --nen:#f6f7f9; --the:#fff; --chu:#1b1f24; --phu:#5b6470; --chinh:#c8102e; --vien:#e3e6ea;
+          --het:#b42318; --sap:#b54708; --du:#1a7f37; --lon:#175cd3; }
+  @media (prefers-color-scheme: dark) { :root { --nen:#111418; --the:#1b2027; --chu:#eef1f4; --phu:#9aa4b1; --vien:#2c333c; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--nen); color:var(--chu); }
+  main { max-width:560px; margin:0 auto; padding:16px; }
+  .the { background:var(--the); border:1px solid var(--vien); border-radius:12px; padding:14px; margin-bottom:12px; }
+  h1 { font-size:18px; margin:0 0 4px; } h2 { font-size:16px; margin:0 0 8px; }
+  .phu { color:var(--phu); font-size:13px; }
+  table { width:100%; border-collapse:collapse; } td { padding:6px 4px; border-bottom:1px solid var(--vien); }
+  td.so { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+  .nhan { display:inline-block; padding:1px 8px; border-radius:999px; font-size:12px; font-weight:600; color:#fff; }
+  .HET { background:var(--het); } .SAP_HET { background:var(--sap); } .DU { background:var(--du); } .TON_LON { background:var(--lon); }
+  .dang-o td { background:color-mix(in srgb, var(--chinh) 8%, transparent); }
+  button { padding:10px 12px; font-size:15px; font-weight:600; border:0; border-radius:8px; cursor:pointer; background:var(--chinh); color:#fff; }
+  button.phu2 { background:transparent; color:var(--chu); border:1px solid var(--vien); }
+  input, select { width:100%; padding:10px; font-size:15px; border:1px solid var(--vien); border-radius:8px; background:var(--nen); color:var(--chu); margin:4px 0; }
+  .hang { display:flex; gap:8px; } .hang > * { flex:1; }
+  .goi-y { border:1px dashed var(--vien); border-radius:8px; padding:10px; margin:8px 0; }
+  .bao { padding:8px; border-radius:8px; background:var(--nen); margin-top:8px; }
+  .an { display:none; }
+  .tab { display:flex; gap:8px; margin-bottom:12px; } .tab button { flex:1; }
+</style>
+</head>
+<body>
+<main>
+  <div class="the" id="khoa">
+    <h2>Mã nhân viên</h2>
+    <input type="password" id="ma" placeholder="Nhập mã nhân viên" autocomplete="off">
+    <button id="nut-ma">Vào</button>
+    <div class="bao an" id="bao-ma"></div>
+  </div>
+
+  <div id="noi-dung" class="an">
+    <div class="tab"><button id="tab-sp">Sản phẩm này</button><button class="phu2" id="tab-pl">Phân loại cả kho</button></div>
+
+    <section id="khung-sp">
+      <div class="the">
+        <div class="phu" id="vi-tri"></div>
+        <h1 id="ten"></h1>
+        <table id="bang-kho"></table>
+        <div class="phu" id="tong"></div>
+      </div>
+      <div class="the">
+        <h2>Gợi ý tự động</h2>
+        <div id="goi-y"><span class="phu">Không có — tồn ở đây đủ bán.</span></div>
+      </div>
+      <div class="the">
+        <h2>Lập đề nghị</h2>
+        <select id="loai"><option value="chuyen_kho">Chuyển hàng từ kho khác về đây</option><option value="dat_ncc">Đề nghị đặt NCC (anh duyệt)</option></select>
+        <div class="hang"><select id="cn-di"></select><input type="number" id="sl" min="1" max="999" value="1"></div>
+        <input type="text" id="ghi-chu" maxlength="200" placeholder="Ghi chú (màu, khách đặt…)">
+        <button id="nut-gui">Gửi đề nghị</button>
+        <div class="bao an" id="bao-gui"></div>
+      </div>
+    </section>
+
+    <section id="khung-pl" class="an"></section>
+  </div>
+</main>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const sku = q.get("sku") || "", cn = q.get("cn") || "30LL";
+  const $ = (id) => document.getElementById(id);
+  const TEN_KHO = { VV: "Kho tổng", "30LL": "30 Lê Lợi", BT: "Ba Tri", TP: "Thạnh Phú", BD: "Bình Đại" };
+  let ma = ""; try { ma = localStorage.getItem("dmv-ma-nv") || ""; } catch (e) {}
+  const bao = (el, t) => { el.textContent = t; el.classList.remove("an"); };
+  const goi = (url, opt = {}) => fetch(url, { ...opt, headers: { "Content-Type": "application/json", "X-Ma-NV": ma } })
+    .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok) throw Object.assign(new Error(j.detail || "Lỗi"), { status: r.status }); return j; });
+  const nhan = (loai, text) => `<span class="nhan ${loai}">${text}</span>`;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function guiDeNghi(body, el) {
+    return goi("/nv/yeu-cau", { method: "POST", body: JSON.stringify(body) })
+      .then((r) => bao(el, `Đã gửi đề nghị (mã ${r.id}). ${body.loai === "dat_ncc" ? "Chờ anh duyệt trên Chuông." : "Kho sẽ xác nhận trên Chuông."}`))
+      .catch((e) => bao(el, e.message));
+  }
+
+  function taiSP() {
+    if (!sku) { $("tab-pl").click(); return; }
+    goi(`/nv/sp/${encodeURIComponent(sku)}?cn=${encodeURIComponent(cn)}`).then((d) => {
+      $("vi-tri").textContent = "Đang ở: " + d.chi_nhanh;
+      $("ten").textContent = d.ten;
+      $("bang-kho").innerHTML = d.kho.map((k) => `<tr class="${k.cn === cn ? "dang-o" : ""}"><td>${esc(k.ten)}</td><td>${nhan(k.loai, k.nhan)}</td><td class="so">${k.sl}</td></tr>`).join("");
+      $("tong").textContent = "Tổng toàn hệ thống: " + d.tong;
+      $("cn-di").innerHTML = d.kho.filter((k) => k.cn !== cn && k.sl > 0).map((k) => `<option value="${k.cn}">Từ ${esc(k.ten)} (còn ${k.sl})</option>`).join("") || '<option value="">Không kho nào còn hàng</option>';
+      if (d.de_xuat.length) {
+        $("goi-y").innerHTML = "";
+        d.de_xuat.forEach((g) => {
+          const div = document.createElement("div"); div.className = "goi-y";
+          div.innerHTML = `<div>${g.loai === "chuyen_kho" ? `Chuyển <b>${g.so_luong}</b> từ ${esc(TEN_KHO[g.cn_di])} về đây` : `Đặt NCC <b>${g.so_luong}</b> (chờ anh duyệt)`}</div><div class="phu">${esc(g.ly_do)}</div>`;
+          const b = document.createElement("button"); b.textContent = "Gửi đề nghị này"; const kq = document.createElement("div"); kq.className = "bao an";
+          b.onclick = () => { b.disabled = true; guiDeNghi({ loai: g.loai, sku, cn_den: cn, cn_di: g.cn_di || "", so_luong: g.so_luong }, kq); };
+          div.append(b, kq); $("goi-y").appendChild(div);
+        });
+      }
+    }).catch(loiChung);
+  }
+
+  function taiPL() {
+    goi(`/nv/phan-loai?cn=${encodeURIComponent(cn)}`).then((d) => {
+      $("khung-pl").innerHTML = `<div class="phu" style="margin-bottom:8px">Phân loại tồn tại ${esc(d.chi_nhanh)}</div>` +
+        ["HET", "SAP_HET", "TON_LON", "DU"].map((k) => `<div class="the"><h2>${nhan(k, d.nhan[k])} ${d.nhom[k].length} SP</h2><table>` +
+          d.nhom[k].map((r) => `<tr><td><a href="/nv?sku=${encodeURIComponent(r.sku)}&cn=${encodeURIComponent(cn)}">${esc(r.ten)}</a>${r.de_xuat.length ? ' <span class="phu">· có gợi ý</span>' : ""}</td><td class="so">${r.sl}</td><td class="so phu">/${r.tong}</td></tr>`).join("") +
+          `</table></div>`).join("");
+    }).catch(loiChung);
+  }
+
+  function loiChung(e) {
+    if (e.status === 401) { try { localStorage.removeItem("dmv-ma-nv"); } catch (x) {} $("noi-dung").classList.add("an"); $("khoa").classList.remove("an"); bao($("bao-ma"), "Sai mã nhân viên"); }
+    else alert(e.message);
+  }
+
+  function vao() { $("khoa").classList.add("an"); $("noi-dung").classList.remove("an"); taiSP(); }
+
+  $("nut-ma").onclick = () => { ma = $("ma").value.trim(); try { localStorage.setItem("dmv-ma-nv", ma); } catch (e) {} vao(); };
+  $("tab-sp").onclick = () => { $("khung-sp").classList.remove("an"); $("khung-pl").classList.add("an"); $("tab-sp").className = ""; $("tab-pl").className = "phu2"; };
+  $("tab-pl").onclick = () => { $("khung-pl").classList.remove("an"); $("khung-sp").classList.add("an"); $("tab-pl").className = ""; $("tab-sp").className = "phu2"; taiPL(); };
+  $("loai").onchange = () => { $("cn-di").classList.toggle("an", $("loai").value !== "chuyen_kho"); };
+  $("nut-gui").onclick = () => {
+    const body = { loai: $("loai").value, sku, cn_den: cn, cn_di: $("loai").value === "chuyen_kho" ? $("cn-di").value : "", so_luong: parseInt($("sl").value, 10) || 0, ghi_chu: $("ghi-chu").value };
+    guiDeNghi(body, $("bao-gui"));
+  };
+  if (ma) vao();
+})();
+</script>
+</body>
+</html>
