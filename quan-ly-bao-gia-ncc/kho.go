@@ -14,17 +14,19 @@ import (
 )
 
 type Kho struct {
-	mu     sync.Mutex
-	duong  string
-	Dong   []DongGia `json:"dong"`
-	MaCuoi int64     `json:"maCuoi"`
+	mu      sync.Mutex
+	duong   string
+	Dong    []DongGia   `json:"dong"`
+	MaCuoi  int64       `json:"maCuoi"`
+	HoaDon  []*HoaDon   `json:"hoaDon"`
+	CauHinh CauHinhHDDT `json:"cauHinh"`
 }
 
 func MoKho(thuMuc string) (*Kho, error) {
 	if err := os.MkdirAll(filepath.Join(thuMuc, "sao-luu"), 0o755); err != nil {
 		return nil, err
 	}
-	k := &Kho{duong: filepath.Join(thuMuc, "bao-gia-ncc.json")}
+	k := &Kho{duong: filepath.Join(thuMuc, "bao-gia-ncc.json"), CauHinh: cauHinhMacDinh()}
 	b, err := os.ReadFile(k.duong)
 	if errors.Is(err, os.ErrNotExist) {
 		return k, nil
@@ -34,6 +36,9 @@ func MoKho(thuMuc string) (*Kho, error) {
 	}
 	if err := json.Unmarshal(b, k); err != nil {
 		return nil, err
+	}
+	if k.CauHinh.EverythingURL == "" {
+		k.CauHinh = cauHinhMacDinh()
 	}
 	return k, nil
 }
@@ -127,3 +132,111 @@ func (k *Kho) Xoa(ids map[int64]bool) (int, error) {
 	k.Dong = giu
 	return n, k.ghi()
 }
+
+// ---------- Hoá đơn ----------
+
+func (k *Kho) CacHoaDon() []*HoaDon {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	ket := make([]*HoaDon, len(k.HoaDon))
+	copy(ket, k.HoaDon)
+	sort.SliceStable(ket, func(i, j int) bool { // mới nhất trên cùng
+		a, b := ngayKhoa(ket[i].NgayLap), ngayKhoa(ket[j].NgayLap)
+		if a == "" {
+			a = ngayKhoa(ket[i].EmailNgay)
+		}
+		if b == "" {
+			b = ngayKhoa(ket[j].EmailNgay)
+		}
+		if a != b {
+			return a > b
+		}
+		return ket[i].ID > ket[j].ID
+	})
+	return ket
+}
+
+// ThemHoaDon gộp theo (Ký hiệu, Số): có rồi thì bổ sung link/tệp còn thiếu. Trả về số thêm mới.
+func (k *Kho) ThemHoaDon(ds []*HoaDon) (int, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	luc := time.Now().Format("02/01/2006 15:04")
+	moi := 0
+	for _, hd := range ds {
+		if hd.So == "" {
+			continue
+		}
+		if hd.Dong == nil {
+			hd.Dong = []DongHD{}
+		}
+		var cu *HoaDon
+		for _, x := range k.HoaDon {
+			if x.So == hd.So && (x.KyHieu == hd.KyHieu || x.KyHieu == "" || hd.KyHieu == "") {
+				cu = x
+				break
+			}
+		}
+		if cu == nil {
+			k.MaCuoi++
+			hd.ID = k.MaCuoi
+			hd.TaoLuc = luc
+			k.HoaDon = append(k.HoaDon, hd)
+			moi++
+			continue
+		}
+		gop := func(dst *string, src string) {
+			if *dst == "" && src != "" {
+				*dst = src
+			}
+		}
+		gop(&cu.KyHieu, hd.KyHieu)
+		gop(&cu.MauSo, hd.MauSo)
+		gop(&cu.NgayLap, hd.NgayLap)
+		gop(&cu.NCC, hd.NCC)
+		gop(&cu.MST, hd.MST)
+		gop(&cu.EmailNgay, hd.EmailNgay)
+		gop(&cu.LinkTraCuu, hd.LinkTraCuu)
+		gop(&cu.MaTraCuu, hd.MaTraCuu)
+		gop(&cu.LinkXML, hd.LinkXML)
+		gop(&cu.LinkPDF, hd.LinkPDF)
+		gop(&cu.TepXML, hd.TepXML)
+		gop(&cu.TepPDF, hd.TepPDF)
+		if len(cu.Dong) == 0 && len(hd.Dong) > 0 {
+			cu.Dong, cu.TienHang, cu.Thue, cu.TongTT, cu.TrangThai = hd.Dong, hd.TienHang, hd.Thue, hd.TongTT, "da-doc"
+		}
+	}
+	return moi, k.ghi()
+}
+
+func (k *Kho) HoaDonTheoID(id int64) *HoaDon {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	for _, x := range k.HoaDon {
+		if x.ID == id {
+			return x
+		}
+	}
+	return nil
+}
+
+func (k *Kho) LuuHoaDon() error { k.mu.Lock(); defer k.mu.Unlock(); return k.ghi() }
+
+func (k *Kho) XoaHoaDon(id int64) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	for i, x := range k.HoaDon {
+		if x.ID == id {
+			k.HoaDon = append(k.HoaDon[:i], k.HoaDon[i+1:]...)
+			return k.ghi()
+		}
+	}
+	return errors.New("không thấy hoá đơn")
+}
+
+func (k *Kho) LuuCauHinh(c CauHinhHDDT) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.CauHinh = c
+	return k.ghi()
+}
+func (k *Kho) LayCauHinh() CauHinhHDDT { k.mu.Lock(); defer k.mu.Unlock(); return k.CauHinh }
