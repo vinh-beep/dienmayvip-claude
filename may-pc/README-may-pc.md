@@ -10,3 +10,6 @@
 | `tim-loi-rc/` | `Tim-Loi-RC.bat` | Chỉ đọc: tìm tác vụ/sự kiện Windows gây rớt Remote Control quanh 00h/12h, ghi lên Bridge. |
 
 Chưa chạy thử trên Windows thật (Cloud không có Windows). Đọc log/tệp kết quả sau lần chạy đầu.
+
+
+> Cập nhật 17/10/2026: phiên PC (CC-QLVIP) tìm ra gốc máy treo là **cạn heap desktop** (lỗi 0xc0000142, quá nhiều tiến trình console). Trên máy chính KHÔNG dùng `giu-phien-rc/` và `suc-khoe/` (trùng tác vụ DMV đang chạy, thêm tiến trình làm heap cạn nhanh hơn) — phiên PC đã dời chúng sang `_KHONG-DUNG 16-10` trên Bridge. Thứ tự dùng trên máy chính xem `00 DOC TRUOC - thu tu dung.md` trong `Giu-May-Thuc`.
