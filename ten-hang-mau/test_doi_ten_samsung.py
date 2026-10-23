@@ -1,5 +1,5 @@
 # Chay: python -m pytest ten-hang-mau  (hoac python test_doi_ten_samsung.py)
-from doi_ten_samsung import tach_ma, lap
+from doi_ten_samsung import tach_ma, tach_ten, lap
 
 
 def _hang(ten, mhcode, sku='', ton=1, mhid='x'):
@@ -31,6 +31,14 @@ def test_giu_ten_tiep_thi_va_thieu_ma():
               _hang('ĐTDĐ SAMSUNG A17 4GB 128GB XÁM', 'x', ton=0)], [])
     assert ra['ngay'][0]['TEN_MOI'] == 'ĐTDĐ SAMSUNG S24 FE 8GB 128GB Đen Graphite Black SM-S721BZKBXXV'
     assert len(ra['thieu_ma']) == 1   # dong het ton bi bo qua
+
+
+def test_bay_5g_khong_lam_lech_ram_rom():
+    # Bay da gap 23/10 (phien PC): '5G 4GB' bi doc nham la RAM 5 / ROM 4. O day lay so bo nho CUOI cung.
+    dau, mau = tach_ten('ĐTDĐ SAMSUNG A06 5G 4GB 128GB Xanh Kem SM-A066BLGGXXV')
+    assert dau[-3:] == ['5G', '4GB', '128GB'] and mau == ['Xanh', 'Kem']
+    dau, mau = tach_ten('ĐTDĐ SAMSUNG A17 5G 4G 128G XÁM KHÓI')
+    assert dau[-1] == '128G' and mau == ['XÁM', 'KHÓI']
 
 
 if __name__ == '__main__':
