@@ -1,0 +1,5 @@
+fastapi>=0.110
+uvicorn>=0.29
+qrcode[pil]>=7.4
+reportlab>=4.0
+# kiểm thử: pip install pytest httpx
