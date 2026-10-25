@@ -73,7 +73,7 @@ var (
 )
 
 // "[13/10/2026 13:15:06] Nick Nam: " ở đầu dòng export Telegram
-var reTienToTelegram = regexp.MustCompile(`^\s*\[[^\]]*\]\s*[^:\n]{0,60}:\s*`)
+var reTienToTelegram = regexp.MustCompile(`^\s*\[\d{1,2}/\d{1,2}/\d{2,4}[^\]]*\]\s*[^:\n+]{0,60}:\s*`)
 
 var mangTag = map[string]bool{"4G": true, "5G": true, "LTE": true, "WIFI": true, "4G LTE": true}
 
@@ -334,9 +334,10 @@ func DocVanBan(vanBan, ncc, ngay string) []DongGia {
 	loai := ""
 	var ket []DongGia
 	for _, dong := range strings.Split(strings.TrimPrefix(vanBan, "\uFEFF"), "\n") {
+		dong = reTienToTelegram.ReplaceAllString(dong, "") // bỏ "[ngày giờ] Tên: " của export Telegram
 		thap := strings.ToLower(boDau(dong))
 		if !strings.HasPrefix(strings.TrimSpace(dong), "+") {
-			t := strings.TrimSpace(reTienToTelegram.ReplaceAllString(thap, ""))
+			t := strings.TrimSpace(thap)
 			laTieuDe := !strings.HasPrefix(t, "luu y") && !strings.HasPrefix(t, "chu y") && !strings.HasPrefix(t, "note") && !strings.HasPrefix(t, "ghi chu") && len(timGia(t)) == 0
 			if laTieuDe && strings.Contains(t, "chua kich") {
 				loai = ChuaKich

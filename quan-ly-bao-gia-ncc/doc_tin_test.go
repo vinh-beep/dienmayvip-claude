@@ -113,6 +113,10 @@ func TestTieuDeTelegramDaiVaBOM(t *testing.T) {
 	if len(ds) != 1 || ds[0].LoaiHang != DaKich {
 		t.Errorf("tiêu đề dài/BOM sai: %+v", ds)
 	}
+	ds3 := DocVanBan("[13/10/2026 13:15:06] Nick: + A01 (4/64): 1.111k\n[SS] Chưa kích hoạt: giá tốt hôm nay\n+ A02: 1.000k\n", "N", "01/01/2026")
+	if len(ds3) != 2 || ds3[1].LoaiHang != ChuaKich {
+		t.Errorf("dòng hàng sau tiền tố Telegram / tiêu đề có ngoặc sai: %+v", ds3)
+	}
 	ds2 := TachDong("+ A01 (4/64): 1.111k- 10c: 1.100k")
 	if len(ds2) != 1 || !strings.Contains(ds2[0].GhiChu, "1.100k") {
 		t.Errorf("giá lẻ không rõ bậc bị mất: %+v", ds2)

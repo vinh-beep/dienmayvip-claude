@@ -127,8 +127,8 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		dinhKem := 0
 		for _, t := range thu {
 			hd := DocEmail(t.Text)
-			var xmlDu, pdfDu []byte
-			for _, d := range t.DinhKem { // thử từng đính kèm XML/ZIP, lấy cái đầu tiên đọc được
+			var xmlDu, pdfDu, xmlTho []byte // xmlTho: đính kèm không đọc được, vẫn lưu để xử lý tay
+			for _, d := range t.DinhKem {
 				if strings.HasSuffix(strings.ToLower(d.Ten), ".pdf") {
 					if pdfDu == nil {
 						pdfDu = d.Du
@@ -138,15 +138,18 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 				if xmlDu != nil {
 					continue
 				}
-				thu := &HoaDon{TrangThai: "moi"}
-				if DocXMLHoaDon(d.Du, thu) == nil {
-					if hd == nil {
-						hd = thu
-					} else {
-						_ = DocXMLHoaDon(d.Du, hd) // XML là nguồn chính xác nhất
-					}
-					xmlDu = d.Du
+				tamHD := HoaDon{TrangThai: "moi"}
+				if hd != nil {
+					tamHD = *hd // giữ link/mã tra cứu từ thân thư, XML ghi đè phần còn lại
 				}
+				if DocXMLHoaDon(d.Du, &tamHD) == nil {
+					hd, xmlDu = &tamHD, d.Du
+				} else if xmlTho == nil {
+					xmlTho = d.Du
+				}
+			}
+			if xmlDu == nil && xmlTho != nil {
+				xmlDu = xmlTho
 			}
 			if hd == nil || !khopNCC(hd, c.LocNCC, c.MSTNCC) {
 				continue

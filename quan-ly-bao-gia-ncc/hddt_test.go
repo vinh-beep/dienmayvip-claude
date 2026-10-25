@@ -122,7 +122,7 @@ func TestDoiChieu(t *testing.T) {
 	if DoiChieu(DongHD{Ten: "Củ sạc 25W"}, "10/09/2026", bg) != nil {
 		t.Error("không có model phải trả nil")
 	}
-	if !coModel("Tab S10FE (8/128)", "TABS10") || coModel("A07S (4/64)", "A07") || !coModel("S26 FE (128)", "S26") || coModel("S26 Ultra", "S2") {
+	if !coModel("Tab S10FE (8/128)", "TABS10") || coModel("A07S (4/64)", "A07") || !coModel("S26 FE (128)", "S26") || coModel("S26 Ultra", "S2") || coModel("Tab S10 FE (8/128)", "S10") || !coModel("S26+ (256)", "S26+") {
 		t.Error("coModel sai")
 	}
 }
@@ -205,10 +205,14 @@ func TestDocEmailMISA(t *testing.T) {
 	if hd == nil || hd.NCC != "CÔNG TY TNHH Y" {
 		t.Errorf("tên người bán fallback sai: %+v", hd)
 	}
-	// MST có thẩm quyền: khớp tên nhưng MST khác → từ chối
+	// MST là cách nhận THÊM (kể cả chi nhánh -001); tên khớp vẫn nhận dù MST không có trong danh sách;
+	// chỉ khai MST (không khai tên) thì lọc theo MST
 	x := &HoaDon{NCC: "CÔNG TY KHÁC", MST: "999-001"}
 	if khopNCC(x, "TCT", "111") || !khopNCC(x, "TCT", "111, 999") || !khopNCC(&HoaDon{NCC: "CÔNG TY TCT", MST: "555"}, "TCT", "111") {
 		t.Error("khopNCC theo MST/tên sai")
+	}
+	if khopNCC(&HoaDon{NCC: "CÔNG TY LẠ", MST: "777"}, "", "111") || !khopNCC(&HoaDon{NCC: "X", MST: "111"}, "", "111") || !khopNCC(&HoaDon{NCC: "X"}, "", "") {
+		t.Error("khopNCC chỉ MST sai")
 	}
 	if ms, kh := tachKyHieu("1C26TLH"); ms != "1" || kh != "C26TLH" {
 		t.Error("tachKyHieu sai")

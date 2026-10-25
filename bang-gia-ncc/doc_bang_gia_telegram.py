@@ -78,7 +78,7 @@ ROM = r"(32|64|126|128|256|512|1024)"
 RAM_ROM_RE = re.compile(r"\(?\s*(2|3|4|6|8|12|16)\s*G?B?\s*/\s*" + ROM + r"\s*G?B?\s*\)?", re.IGNORECASE)
 ROM_RE = re.compile(r"(?:\(\s*" + ROM + r"\s*\)|\b" + ROM + r"\s*G\b|\b" + ROM + r"\b)", re.IGNORECASE)
 MA_RE = re.compile(r"\b([A-Z]\d{3}[A-Z]?)\b")
-TIEN_TO_TELEGRAM_RE = re.compile(r"^\s*\[[^\]]*\]\s*[^:\n]{0,60}:\s*")  # "[13/10/2026 13:15:06] Nick Nam: "
+TIEN_TO_TELEGRAM_RE = re.compile(r"^\s*\[\d{1,2}/\d{1,2}/\d{2,4}[^\]]*\]\s*[^:\n+]{0,60}:\s*")  # "[13/10/2026 13:15:06] Nick Nam: "
 MANG = {"4G", "5G", "LTE", "WIFI", "4G LTE"}
 
 
@@ -185,9 +185,10 @@ def doc_van_ban(van_ban: str) -> list[tuple[str, DongHang]]:
     loai = "Chua ro"
     ket = []
     for dong in van_ban.lstrip("\ufeff").splitlines():
+        dong = TIEN_TO_TELEGRAM_RE.sub("", dong)  # bỏ "[ngày giờ] Tên: " của export Telegram
         thap = bo_dau(dong).lower()
         if not dong.strip().startswith("+"):
-            t = TIEN_TO_TELEGRAM_RE.sub("", thap).strip()
+            t = thap.strip()
             la_tieu_de = not t.startswith(("luu y", "chu y", "note", "ghi chu")) and not GIA_RE.search(t)
             if la_tieu_de and "chua kich" in t:
                 loai = "Chua kich hoat"

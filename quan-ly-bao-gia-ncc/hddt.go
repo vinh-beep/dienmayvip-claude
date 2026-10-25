@@ -604,7 +604,7 @@ func khopNCC(hd *HoaDon, locNCC, mst string) bool {
 	}
 	ds := tachDS(locNCC)
 	if len(ds) == 0 {
-		return true
+		return len(tachDS(mst)) == 0 // chỉ khai MST: lọc theo MST thôi; cả hai trống: nhận tất cả
 	}
 	ten := strings.ToUpper(boDau(hd.NCC))
 	for _, l := range ds {
@@ -718,27 +718,42 @@ func DoiChieu(d DongHD, ngayHD string, baoGia []DongGia) *DongGia {
 	return nil
 }
 
-var hauToModel = map[string]bool{"": true, "FE": true, "ULTRA": true, "PLUS": true, "LITE": true, "5G": true, "4G": true, "LTE": true, "WIFI": true}
+// Hậu tố được phép dính sau mã model trong tên báo giá: chung với mangTag (4G/5G/LTE/WIFI) + biến thể dòng.
+var hauToDong = []string{"FE", "ULTRA", "PLUS", "LITE", "EDGE"}
+
+func hauToHopLe(h string) bool {
+	if h == "" || mangTag[h] {
+		return true
+	}
+	for _, x := range hauToDong {
+		if x == h {
+			return true
+		}
+	}
+	return false
+}
 
 // coModel: tên báo giá có đúng mã model. "A07S" không khớp "A07"; "TabS10FE" vẫn khớp "TABS10"
-// (hậu tố dính liền FE/ULTRA/PLUS/5G được phép).
+// (hậu tố dính liền FE/ULTRA/PLUS/5G được phép); "Tab S10" không khớp model "S10" (phải đủ từ đầu).
 func coModel(tenHang, model string) bool {
-	tg := strings.ToUpper(boDau(tenHang))
+	tg := strings.ReplaceAll(strings.ToUpper(boDau(tenHang)), "+", "PLUS")
+	model = strings.ReplaceAll(model, "+", "PLUS")
 	for _, m := range reModelHD.FindAllStringSubmatch(tg, -1) {
 		if strings.ReplaceAll(m[1], " ", "") == model {
 			return true
 		}
 	}
 	tgLien := strings.ReplaceAll(tg, " ", "")
+	laKyTu := func(c byte) bool { return c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' }
 	for i := strings.Index(tgLien, model); i >= 0; {
-		truoc := i == 0 || !(tgLien[i-1] >= 'A' && tgLien[i-1] <= 'Z' || tgLien[i-1] >= '0' && tgLien[i-1] <= '9')
-		j := i + len(model)
-		k := j
-		for k < len(tgLien) && (tgLien[k] >= 'A' && tgLien[k] <= 'Z' || tgLien[k] >= '0' && tgLien[k] <= '9') {
-			k++
-		}
-		if (truoc || strings.HasPrefix(model, "S") || strings.HasPrefix(model, "TAB")) && hauToModel[tgLien[j:k]] {
-			return true
+		if i == 0 || !laKyTu(tgLien[i-1]) {
+			k := i + len(model)
+			for k < len(tgLien) && laKyTu(tgLien[k]) {
+				k++
+			}
+			if hauToHopLe(tgLien[i+len(model) : k]) {
+				return true
+			}
 		}
 		n := strings.Index(tgLien[i+1:], model)
 		if n < 0 {
