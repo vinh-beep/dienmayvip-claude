@@ -10,8 +10,14 @@ Mã Python thuần chạy trên PC, không gọi AI nào. Mặc định **chạy
 4. **Tệp không quét được** (PDF, zip, `.db`, loại lạ) bị chặn mặc định. Ảnh/video đi qua. Muốn cho một loại đi qua thì thêm vào `cho_phep_duoi_khong_quet`, ví dụ `[".pdf"]`.
 5. Danh sách tệp đã duyệt đưa cho `rclone copy --files-from`. Chỉ `copy`: thêm và cập nhật, **không xóa** gì trên Drive (tệp đổi thì Drive giữ bản cũ trong lịch sử phiên bản).
 6. Log nằm ở `thu_muc_log`: `trang-thai-dong-bo.json`, `chan-<giờ>.txt` (tệp nào bị chặn bởi luật nào, **không ghi nội dung khớp**), `rclone-<tên>-<giờ>.log`.
-7. Sau lần đẩy thật thành công, `trang-thai-dong-bo.json` được đẩy lên Drive để Claude đọc nhanh (rất ít token).
-8. `--kiem-tuoi`: nếu quá `bao_loi_sau_gio` (24) chưa đẩy được, ghi một tin `tin-...__viec__dong-bo-drive-loi.json` vào thư mục Bridge cho phiên trực (tối đa 1 tin mỗi 24 giờ) và thoát mã 2.
+7. **Đọc lại đích:** sau `copy`, chạy `rclone check --one-way` trên đúng danh sách vừa đẩy. Không khớp thì lần đó tính là LỖI, không ghi mốc thành công (tắt bằng `"xac_minh": false`).
+8. Sau lần đẩy thật thành công, `trang-thai-dong-bo.json` được đẩy lên Drive để Claude đọc nhanh (rất ít token).
+9. `--kiem-tuoi`: nếu quá `bao_loi_sau_gio` (24) chưa đẩy được, ghi một tin `tin-...__viec__dong-bo-drive-loi.json` vào thư mục Bridge cho phiên trực (tối đa 1 tin mỗi 24 giờ) và thoát mã 2.
+
+## Kiểm nhanh / đầy đủ
+
+- `--kiem-nhe`: chỉ đọc cấu hình, thư mục nguồn, thư mục log, thư mục Bridge. Không đụng mạng.
+- `--kiem`: thêm `rclone version` và liệt kê thư mục gốc của remote (chỉ đọc).
 
 ## Cài đặt trên PC
 
@@ -29,4 +35,4 @@ Mã Python thuần chạy trên PC, không gọi AI nào. Mặc định **chạy
 - Luật quét là **chặn thà nhầm còn hơn lọt**: có thể chặn nhầm tệp lành. Xem `chan-*.txt` và chỉnh nguồn nếu cần, không nới luật bừa.
 - Luật số điện thoại có thể chặn nhầm dãy số trông giống SĐT.
 - `--max-age 2d` nghĩa là tệp không sửa quá 2 ngày không được đẩy lại. Lần đầu muốn đẩy toàn bộ thì đặt `max_age` lớn (ví dụ `3650d`), chạy xong đặt về `2d`.
-- Chưa thử với rclone và Google Drive thật; 54 ca kiểm thử dùng bản giả lập rclone (`python -m pytest -q`).
+- Chưa thử với rclone và Google Drive thật; 64 ca kiểm thử dùng bản giả lập rclone (`python -m pytest -q`).

@@ -44,12 +44,17 @@ API chỉ nghe `127.0.0.1`. Kết nối SQL dùng `Encrypt=no;TrustServerCertifi
 
 Funnel là địa chỉ **công khai**, nên bắt buộc dùng token mạnh và login chỉ-đọc như trên. Không dán token vào chat, kho GitHub hay file chia sẻ; hãy đưa token cho Claude qua cách an toàn khác.
 
+## Kiểm trước khi mở ra ngoài
+
+- `python kiem_ket_noi.py --nhe`: chỉ đọc `config.env` và `views.json` (token ≥ 32 ký tự, đủ biến, view hợp lệ). Không đụng SQL.
+- `python kiem_ket_noi.py`: đầy đủ. Kết nối SQL mới, kiểm login không có quyền ghi, đọc thật 1 dòng từng view. Hỏng mục nào thì **không** bật Funnel.
+
 ## Chạy nền
 
 Dùng NSSM đăng ký dịch vụ chạy lệnh ở bước 7, thư mục làm việc là thư mục này, tự khởi động lại khi lỗi.
 
 ## Kiểm thử
 
-`pip install pytest httpx` rồi `python -m pytest -q` (42 ca, dùng SQLite giả lập, không cần SQL Server).
+`pip install pytest httpx` rồi `python -m pytest -q` (51 ca, dùng SQLite giả lập, không cần SQL Server).
 
 Phần chưa thử: kết nối SQL Server thật và Funnel thật. Cần thử trên máy của anh trước khi dùng.

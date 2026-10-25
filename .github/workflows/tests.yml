@@ -1,0 +1,23 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  kiem-tu:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]   # máy PC chạy Windows: bắt lỗi POSIX/Windows sớm
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install fastapi httpx pytest uvicorn
+      - name: Chạy bộ kiểm của từng thư mục
+        run: python kiem_tat_ca.py
+      - name: Tự kiểm bộ kiểm (đột biến)
+        run: python kiem_tat_ca.py --tu-kiem

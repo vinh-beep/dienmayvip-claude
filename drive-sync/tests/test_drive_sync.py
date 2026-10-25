@@ -241,14 +241,14 @@ def test_lenh_rclone_chi_copy_khong_xoa(tmp_path):
 
 
 class FakeRunner:
-    def __init__(self, code=0, exc=None):
-        self.calls, self.code, self.exc = [], code, exc
+    def __init__(self, code=0, exc=None, codes=None):
+        self.calls, self.code, self.exc, self.codes = [], code, exc, codes or {}
 
     def __call__(self, cmd, **kw):
         self.calls.append(cmd)
         if self.exc:
             raise self.exc
-        return SimpleNamespace(returncode=self.code, stdout="", stderr="")
+        return SimpleNamespace(returncode=self.codes.get(cmd[1], self.code), stdout="", stderr="")
 
 
 def setup_src(tmp_path):
@@ -278,8 +278,11 @@ def test_chay_that_thanh_cong_ghi_moc_va_day_trang_thai(tmp_path):
     runner = FakeRunner()
     st = db.chay_dong_bo(cfg, chay_that=True, now=NOW, runner=runner)
     assert st["lan_thanh_cong_cuoi"] == st["ts"]
-    assert runner.calls[0][1] == "copy" and "--dry-run" not in runner.calls[0]
-    assert runner.calls[1][1] == "copyto" and runner.calls[1][-1].endswith("trang-thai-dong-bo.json")
+    assert [c[1] for c in runner.calls] == ["copy", "check", "copyto"]
+    assert "--dry-run" not in runner.calls[0]
+    assert "--one-way" in runner.calls[1] and "--files-from" in runner.calls[1]
+    assert runner.calls[2][-1].endswith("trang-thai-dong-bo.json")
+    assert st["thu_muc"][0]["xac_minh"] == "dat"
     saved = json.loads((tmp_path / "log" / db.STATUS_NAME).read_text(encoding="utf-8"))
     assert saved["lan_thanh_cong_cuoi"] == st["ts"]
 
@@ -373,3 +376,95 @@ def test_main_ma_thoat(tmp_path, capsys):
     cfgp = cfg_file(tmp_path)
     assert db.main(["--config", str(cfgp), "--kiem-tuoi"]) == 2
     assert db.main(["--config", str(tmp_path / "khong-co.json")]) == 1
+
+
+# ---------------------------------------------------------------- đọc lại đích (bài học "tải về ≠ đã nạp")
+
+
+def test_doc_lai_dich_hong_thi_khong_ghi_moc_thanh_cong(tmp_path):
+    cfg = setup_src(tmp_path)
+    runner = FakeRunner(codes={"check": 1})
+    st = db.chay_dong_bo(cfg, chay_that=True, now=NOW, runner=runner)
+    assert st["ket_qua"] == "loi" and st["thu_muc"][0]["xac_minh"] == "hong"
+    assert "không khớp" in " ".join(st["loi"])
+    assert st["lan_thanh_cong_cuoi"] is None
+    assert [c[1] for c in runner.calls] == ["copy", "check"]  # lỗi thì không đẩy trạng thái "ok"
+
+
+def test_chay_thu_khong_chay_check(tmp_path):
+    runner = FakeRunner()
+    db.chay_dong_bo(setup_src(tmp_path), chay_that=False, now=NOW, runner=runner)
+    assert [c[1] for c in runner.calls] == ["copy"]
+
+
+def test_tat_xac_minh_theo_cau_hinh(tmp_path):
+    cfg = setup_src(tmp_path)
+    cfg["xac_minh"] = False
+    runner = FakeRunner()
+    db.chay_dong_bo(cfg, chay_that=True, now=NOW, runner=runner)
+    assert [c[1] for c in runner.calls] == ["copy", "copyto"]
+
+
+def test_lenh_check_chi_doc_khong_xoa(tmp_path):
+    cfg = db.load_config(cfg_file(tmp_path))
+    cmd = db.build_rclone_check_cmd(cfg, "C:\\src", "Nguon", Path("l.txt"), Path("c.log"))
+    assert cmd[1] == "check" and "--one-way" in cmd
+    assert not {"sync", "copy", "move", "delete", "purge"} & set(cmd)
+
+
+# ---------------------------------------------------------------- bài học Windows
+
+
+def test_danh_sach_files_from_luon_xuong_dong_LF(tmp_path):
+    f = tmp_path / "ds.txt"
+    db._write_lines(f, ["a/b.txt", "c.md"])
+    assert f.read_bytes() == b"a/b.txt\nc.md\n"
+
+
+def test_ghi_json_thu_lai_khi_tep_dich_dang_bi_khoa(tmp_path, monkeypatch):
+    real = os.replace
+    calls = {"n": 0}
+
+    def flaky(src, dst):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise PermissionError("dang mo boi tien trinh khac")
+        return real(src, dst)
+
+    monkeypatch.setattr(db.os, "replace", flaky)
+    target = tmp_path / "t.json"
+    db._write_json_atomic(target, {"a": 1}, wait_s=0)
+    assert json.loads(target.read_text(encoding="utf-8")) == {"a": 1} and calls["n"] == 3
+
+
+def test_ghi_json_van_bao_loi_neu_khoa_mai(tmp_path, monkeypatch):
+    monkeypatch.setattr(db.os, "replace", lambda s, d: (_ for _ in ()).throw(PermissionError("khoa")))
+    with pytest.raises(PermissionError):
+        db._write_json_atomic(tmp_path / "t.json", {}, tries=3, wait_s=0)
+
+
+# ---------------------------------------------------------------- kiểm nhanh / đầy đủ
+
+
+def test_kiem_nhe_khong_goi_rclone(tmp_path):
+    cfg = setup_src(tmp_path)
+    runner = FakeRunner()
+    res = db.kiem_cau_hinh(cfg, day_du=False, runner=runner)
+    assert all(ok for ok, _ in res) and runner.calls == []
+
+
+def test_kiem_day_du_goi_version_va_lsf(tmp_path):
+    cfg = setup_src(tmp_path)
+    runner = FakeRunner()
+    res = db.kiem_cau_hinh(cfg, day_du=True, runner=runner)
+    assert all(ok for ok, _ in res)
+    assert [c[1] for c in runner.calls] == ["version", "lsf"]
+    assert not {"copy", "sync", "delete"} & {c[1] for c in runner.calls}
+
+
+def test_kiem_bao_hong_khi_thieu_thu_muc_hoac_rclone(tmp_path):
+    cfg = setup_src(tmp_path)
+    cfg["nguon"][0]["thu_muc"] = str(tmp_path / "khong-co")
+    res = db.kiem_cau_hinh(cfg, day_du=True, runner=FakeRunner(exc=FileNotFoundError()))
+    msgs = [m for ok, m in res if not ok]
+    assert any("KHÔNG THẤY" in m for m in msgs) and any("không tìm thấy rclone" in m for m in msgs)
