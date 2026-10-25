@@ -24,9 +24,30 @@ Mã Python thuần chạy trên PC, không gọi AI nào. Mặc định **chạy
 6. **Chạy thật lần đầu:** thêm `--chay-that`.
 7. **Đặt lịch:** `powershell -ExecutionPolicy Bypass -File dat_lich.ps1` (chỉ in lệnh), rồi thêm `-XacNhan` để đăng ký 2 tác vụ: đẩy lúc 02:30 mỗi ngày và kiểm quá hạn mỗi 6 giờ. Mỗi tác vụ ghi log riêng.
 
+## Harness² vòng 2 — bộ chặn tự học từ phán xử của anh (`hoc_tu_chan.py`)
+
+Bộ quét ở trên là **vòng 1**: đoán "tệp này nguy hiểm" rồi chặn. Theo luật Harness² (25/10/2026), mọi vòng tự động có điểm dự đoán phải có **vòng 2 đo kết quả thật**. Với chốt chặn, kết quả thật là **bao nhiêu lần báo oan**.
+
+1. Sau mỗi lượt đồng bộ, mở `so-bai-hoc-chan.md` trong thư mục log, mục ⑤ liệt kê tệp bị chặn chờ anh phán xử.
+2. Phán xử: `python hoc_tu_chan.py --config dong_bo.config.json --phan-xu "BaoCao/bang.pdf=oan" "BaoCao/kh.csv=dung"`.
+   `oan` = tệp lành bị chặn nhầm; `dung` = chặn đúng. Phán xử ghi vào `phan-xu-chan.json` (chỉ thêm/ghi đè theo tệp, không xoá).
+3. Lệnh trên tính lại sổ: `bai-hoc-chan.json` (máy đọc) và `so-bai-hoc-chan.md` (người đọc, mới nhất trên cùng, sinh lại cả tệp mỗi lượt nên không nhân đôi). Chạy không kèm `--phan-xu` chỉ để tính lại sổ.
+4. Lượt đồng bộ kế tiếp đọc `bai-hoc-chan.json`: tệp anh đã phán **oan** được đi qua **chỉ khi** nội dung còn y nguyên (so SHA-256 ghi lúc phán xử). Đổi nội dung → chặn lại từ đầu. Trạng thái ghi thêm cột `theo_bai_hoc`.
+
+Luật cứng và luật mềm:
+
+| Loại | Luật | Phán "oan" có tác dụng? |
+|---|---|---|
+| **Cứng** | mọi luật bí mật (khoá API, token, khoá riêng, JWT, gán mật khẩu), `gia-von-ncc`, `cccd-cmnd`, `ten-nhay-cam` | **Không.** Sổ chỉ ghi nhận "bị phán oan"; muốn đổi phải sửa mã và anh duyệt. |
+| **Mềm** | `so-dien-thoai-vn`, `so-tai-khoan`, `loai-tep-khong-quet-duoc`, `qua-lon-de-quet`, `ooxml-qua-lon`, `khong-doc-duoc-ooxml`, `khong-doc-duoc` | Có, cho đúng tệp đó, đúng nội dung đó. |
+
+Sổ bài học chấm từng luật: lần chặn · tệp · đã phán xử · oan · tỉ lệ oan. **Dưới 5 phán xử ghi "chưa đủ dữ liệu"**, không kết luận. Đủ mẫu và luật mềm báo oan từ 50% trở lên thì máy **đề xuất** anh xem lại cấu hình (ví dụ `cho_phep_duoi_khong_quet`), máy không tự nới. Chốt chặn không áp "80% thắng / 20% thử": không thử nới luật để xem có lọt không.
+
+Bộ kiểm nhanh không cần tệp thật: `python hoc_tu_chan.py --kiem` (phải in `KIỂM: ĐẠT`).
+
 ## Giới hạn
 
 - Luật quét là **chặn thà nhầm còn hơn lọt**: có thể chặn nhầm tệp lành. Xem `chan-*.txt` và chỉnh nguồn nếu cần, không nới luật bừa.
 - Luật số điện thoại có thể chặn nhầm dãy số trông giống SĐT.
 - `--max-age 2d` nghĩa là tệp không sửa quá 2 ngày không được đẩy lại. Lần đầu muốn đẩy toàn bộ thì đặt `max_age` lớn (ví dụ `3650d`), chạy xong đặt về `2d`.
-- Chưa thử với rclone và Google Drive thật; 54 ca kiểm thử dùng bản giả lập rclone (`python -m pytest -q`).
+- Chưa thử với rclone và Google Drive thật; 71 ca kiểm thử dùng bản giả lập rclone (`python -m pytest -q`), trong đó 17 ca cho Harness² vòng 2.

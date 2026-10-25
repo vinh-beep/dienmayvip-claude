@@ -25,6 +25,7 @@ import kiem_an_toan as an_toan  # noqa: E402
 
 VN = timezone(timedelta(hours=7))
 STATUS_NAME = "trang-thai-dong-bo.json"
+BAI_HOC_NAME = "bai-hoc-chan.json"  # Harness² vòng 2, do hoc_tu_chan.py sinh
 LOCK_STALE_S = 2 * 3600
 
 
@@ -98,6 +99,20 @@ def _write_json_atomic(path: Path, data: Any) -> None:
     os.replace(tmp, path)
 
 
+def doc_cho_phep_tep(path: Path) -> dict[str, str]:
+    """Đọc {dich/rel: sha256} từ bai-hoc-chan.json (Harness² vòng 2). Thiếu/hỏng → {} (fail-closed: không nới gì)."""
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    raw = data.get("cho_phep_tep") if isinstance(data, dict) else None
+    if not isinstance(raw, dict):
+        return {}
+    return {str(k): str(v) for k, v in raw.items() if isinstance(v, str) and len(v) == 64}
+
+
 class Lock:
     """Chống chạy chồng: tạo tệp khóa; khóa cũ hơn 2 giờ coi như bỏ."""
 
@@ -147,6 +162,8 @@ def chay_dong_bo(
     extra = frozenset(e.lower() for e in cfg["cho_phep_duoi_khong_quet"])
     stamp = when.strftime("%Y%m%d-%H%M%S")
 
+    cho_phep_tep_all = doc_cho_phep_tep(log_dir / BAI_HOC_NAME)
+
     status_path = log_dir / STATUS_NAME
     previous: dict[str, Any] = {}
     if status_path.is_file():
@@ -174,13 +191,16 @@ def chay_dong_bo(
                 entry["loi"] = "khong-thay-thu-muc"
                 status["thu_muc"].append(entry)
                 continue
+            prefix = item["dich"] + "/"
+            cho_phep_tep = {k[len(prefix):]: v for k, v in cho_phep_tep_all.items() if k.startswith(prefix)}
             scan = an_toan.quet_thu_muc(
                 src, max_size=max_size, max_age_s=max_age, min_age_s=min_age, now=now_ts,
-                cho_phep_khong_quet=extra,
+                cho_phep_khong_quet=extra, cho_phep_tep=cho_phep_tep,
             )
             entry.update(
                 tim_thay=scan.seen, se_day=len(scan.allowed), bi_chan=len(scan.blocked),
                 bo_qua=dict(scan.skipped), dung_luong_byte=scan.allowed_bytes,
+                theo_bai_hoc=len(scan.theo_bai_hoc),
             )
             by_rule: dict[str, int] = {}
             for rel, why in scan.blocked.items():
@@ -290,7 +310,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"BỎ QUA: {exc}", file=sys.stderr)
         return 1
     for e in status["thu_muc"]:
-        print(f"{e['dich']}: tìm {e['tim_thay']} · sẽ đẩy {e['se_day']} · chặn {e['bi_chan']} · rclone {e['rclone_ma']}")
+        print(f"{e['dich']}: tìm {e['tim_thay']} · sẽ đẩy {e['se_day']} · chặn {e['bi_chan']}"
+              f" · qua nhờ bài học {e.get('theo_bai_hoc', 0)} · rclone {e['rclone_ma']}")
     for loi in status["loi"]:
         print("LỖI:", loi, file=sys.stderr)
     print(f"Chế độ: {status['che_do']} · kết quả: {status['ket_qua']}")
