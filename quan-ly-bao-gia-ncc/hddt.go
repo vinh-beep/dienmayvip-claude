@@ -94,7 +94,7 @@ var (
 )
 
 var (
-	reMisaSo    = regexp.MustCompile(`(?i)Số:\s*\*?\s*([0-9]+)`)
+	reMisaSo    = regexp.MustCompile(`(?im)(?:^|[^ã\s])\s*Số:\s*\*?\s*([0-9]+)`)
 	reMisaNgay  = regexp.MustCompile(`(?i)Ngày:\s*\*?\s*(\d{2}/\d{2}/\d{4})`)
 	reMisaKH    = regexp.MustCompile(`(?i)Ký hiệu:\s*\*?\s*([A-Z0-9]+)`)
 	reMisaMaCQT = regexp.MustCompile(`(?i)Mã (?:của )?cơ quan thuế:\s*\*?\s*([A-Z0-9-]+)`)
@@ -120,12 +120,14 @@ func DocEmailMISA(noiDung string) *HoaDon {
 		hd.NgayLap = k[1]
 	}
 	if k := reMisaKH.FindStringSubmatch(noiDung); k != nil {
-		hd.KyHieu = strings.ToUpper(k[1])
+		hd.MauSo, hd.KyHieu = tachKyHieu(strings.ToUpper(k[1]))
 	}
 	if k := reMisaMaCQT.FindStringSubmatch(noiDung); k != nil {
 		hd.MaCQT = k[1]
 	}
 	if k := reMisaNBan.FindStringSubmatch(noiDung); k != nil {
+		hd.NCC = strings.TrimSpace(k[1])
+	} else if k := reNguoiBan.FindStringSubmatch(noiDung); k != nil {
 		hd.NCC = strings.TrimSpace(k[1])
 	}
 	sc := ""
@@ -141,6 +143,20 @@ func DocEmailMISA(noiDung string) *HoaDon {
 		hd.LinkPDF = "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=pdf&Code=" + sc
 	}
 	return hd
+}
+
+// tachKyHieu: ký hiệu TT78 ghi liền mẫu số ("1C26TLH") → ("1", "C26TLH"); đã tách rồi thì giữ nguyên.
+func tachKyHieu(kh string) (mauSo, kyHieu string) {
+	if len(kh) >= 2 && kh[0] >= '0' && kh[0] <= '9' && (kh[1] == 'C' || kh[1] == 'K') {
+		return kh[:1], kh[1:]
+	}
+	return "", kh
+}
+
+// chuanKyHieu dùng để so khớp: bỏ mẫu số đứng đầu, viết hoa.
+func chuanKyHieu(kh string) string {
+	_, k := tachKyHieu(strings.ToUpper(strings.TrimSpace(kh)))
+	return k
 }
 
 // DocEmail nhận diện định dạng (Fast e-Invoice hoặc MISA meinvoice).
@@ -329,7 +345,11 @@ func DocXMLHoaDon(b []byte, hd *HoaDon) error {
 		hd.So = so
 	}
 	if k := goc.chu("KHHDon", "KyHieu", "SerialNo", "KyHieuHD"); k != "" {
-		hd.KyHieu = k
+		ms, kh := tachKyHieu(strings.ToUpper(k))
+		hd.KyHieu = kh
+		if ms != "" && hd.MauSo == "" {
+			hd.MauSo = ms
+		}
 	}
 	if k := goc.chu("KHMSHDon", "MauSo", "TemplateCode"); k != "" {
 		hd.MauSo = k
@@ -413,7 +433,7 @@ func TaiHoaDon(hd *HoaDon, thuMuc string) error {
 		b, ct, err := taiTep(hd.LinkXML)
 		if err != nil {
 			loi = append(loi, "XML: "+err.Error())
-		} else if (strings.Contains(strings.ToLower(ct), "text/html") || bytes.Contains(bytes.ToLower(b[:min(len(b), 600)]), []byte("<html"))) && !bytes.Contains(b, []byte("<HDon")) {
+		} else if (strings.Contains(strings.ToLower(ct), "text/html") || bytes.Contains(bytes.ToLower(b[:min(len(b), 600)]), []byte("<html"))) && !bytes.Contains(b, []byte("<HDon")) && !bytes.Contains(b[:min(len(b), 600)], []byte("<?xml")) {
 			loi = append(loi, "XML: máy chủ trả về trang web (mở link Tra cứu, nhập mã rồi tải thủ công vào thư mục quét)")
 		} else {
 			duoi := ".xml"
@@ -574,10 +594,13 @@ func DocTepHoaDon(duong, locNCC, mst string) (*HoaDon, error) {
 
 // khopNCC: locNCC là danh sách tên (không dấu) cách nhau dấu phẩy; mst là danh sách MST cách nhau dấu phẩy.
 func khopNCC(hd *HoaDon, locNCC, mst string) bool {
-	for _, m := range tachDS(mst) {
-		if hd.MST != "" && hd.MST == m {
-			return true
+	if dsMST := tachDS(mst); len(dsMST) > 0 && hd.MST != "" {
+		for _, m := range dsMST {
+			if hd.MST == m {
+				return true
+			}
 		}
+		return false // MST có mà không khớp: từ chối, không xét tên
 	}
 	ds := tachDS(locNCC)
 	if len(ds) == 0 {
@@ -626,7 +649,11 @@ func DocDanhSachLink(b []byte) ([]*HoaDon, error) {
 			l.LinkXML = "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=" + l.MaTraCuu
 			l.LinkPDF = "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=pdf&Code=" + l.MaTraCuu
 		}
-		ket = append(ket, &HoaDon{So: strings.TrimLeft(l.So, "0"), KyHieu: strings.ToUpper(l.KyHieu), MauSo: l.MauSo, NCC: l.NCC,
+		ms, kh := tachKyHieu(strings.ToUpper(strings.TrimSpace(l.KyHieu)))
+		if l.MauSo == "" {
+			l.MauSo = ms
+		}
+		ket = append(ket, &HoaDon{So: strings.TrimLeft(l.So, "0"), KyHieu: kh, MauSo: l.MauSo, NCC: l.NCC,
 			NgayLap: l.NgayLap, MaCQT: l.MaCQT, EmailNgay: l.EmailNgay, LinkTraCuu: l.LinkTraCuu, MaTraCuu: l.MaTraCuu, LinkXML: l.LinkXML, LinkPDF: l.LinkPDF,
 			Nguon: "bridge", TrangThai: "moi"})
 	}
@@ -674,8 +701,7 @@ func DoiChieu(d DongHD, ngayHD string, baoGia []DongGia) *DongGia {
 			if g.SLMin != 1 {
 				continue
 			}
-			tg := strings.ReplaceAll(strings.ToUpper(boDau(g.TenHang)), " ", "")
-			if !strings.EqualFold(g.Model, model) && !strings.Contains(tg, model) {
+			if !strings.EqualFold(g.Model, model) && !coModel(g.TenHang, model) {
 				continue
 			}
 			if rom != "" && g.CauHinh != "" && g.CauHinh != rom && !strings.HasSuffix(g.CauHinh, "/"+rom) && !strings.HasSuffix(rom, "/"+g.CauHinh) {
@@ -690,6 +716,16 @@ func DoiChieu(d DongHD, ngayHD string, baoGia []DongGia) *DongGia {
 		}
 	}
 	return nil
+}
+
+// coModel: tên báo giá có đúng mã model (so cả từ, "A07S" không khớp "A07").
+func coModel(tenHang, model string) bool {
+	for _, m := range reModelHD.FindAllStringSubmatch(strings.ToUpper(boDau(tenHang)), -1) {
+		if strings.ReplaceAll(m[1], " ", "") == model {
+			return true
+		}
+	}
+	return false
 }
 
 func ngayKhoaInt(n string) int64 { v, _ := strconv.ParseInt(ngayKhoa(n), 10, 64); return v }

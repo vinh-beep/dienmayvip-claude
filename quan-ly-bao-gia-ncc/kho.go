@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -169,9 +170,15 @@ func (k *Kho) ThemHoaDon(ds []*HoaDon) (int, error) {
 		if hd.Dong == nil {
 			hd.Dong = []DongHD{}
 		}
+		if ms, kh := tachKyHieu(strings.ToUpper(strings.TrimSpace(hd.KyHieu))); kh != hd.KyHieu {
+			hd.KyHieu = kh
+			if hd.MauSo == "" {
+				hd.MauSo = ms
+			}
+		}
 		var cu *HoaDon
 		for _, x := range k.HoaDon {
-			if x.So == hd.So && (x.KyHieu == hd.KyHieu || x.KyHieu == "" || hd.KyHieu == "") {
+			if x.So == hd.So && (chuanKyHieu(x.KyHieu) == chuanKyHieu(hd.KyHieu) || x.KyHieu == "" || hd.KyHieu == "") {
 				cu = x
 				break
 			}

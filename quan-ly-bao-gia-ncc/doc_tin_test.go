@@ -5,7 +5,7 @@ package main
 import "testing"
 
 func TestDocGia(t *testing.T) {
-	cases := map[string]int64{"5.360k": 5360000, "16.890": 16890000, "990k": 990000, "1.020k": 1020000}
+	cases := map[string]int64{"1.234k": 1234000, "12.345": 12345000, "555k": 555000, "1.020k": 1020000}
 	for in, want := range cases {
 		if got := DocGia(in); got != want {
 			t.Errorf("DocGia(%q)=%d, muốn %d", in, got, want)
@@ -39,7 +39,7 @@ func TestMaModel(t *testing.T) {
 	if ds[0].TenHang != "X998 4G (4/64)" || ds[0].Model != "X998" {
 		t.Errorf("sai: %+v", ds[0])
 	}
-	ds = TachDong("+ A001 (4/128): *5.360k. Đen. Xanh*Update mới*")
+	ds = TachDong("+ A001 (4/128): *1.234k. Đen. Xanh*Update mới*")
 	if ds[0].TenHang != "A001 (4/128)" || ds[0].Model != "A001" || ds[0].GhiChu != "Update moi" {
 		t.Errorf("sai: %+v", ds[0])
 	}
@@ -61,5 +61,45 @@ func TestKhoi(t *testing.T) {
 	ds := DocVanBan(tin, "NCC Thu", "01/01/2026")
 	if len(ds) != 4 || ds[0].LoaiHang != ChuaKich || ds[2].LoaiHang != DaKich || ds[3].SLMin != 10 || ds[0].NCC != "NCC Thu" {
 		t.Fatalf("sai: %+v", ds)
+	}
+}
+
+func TestMauKhongNhamTuThuong(t *testing.T) {
+	ds := TachDong("+ A01 (4/64): 1.111k. Giao đến 15/10, bậc SL 10 hàng hỏng tìm lại")
+	if len(ds) != 1 || ds[0].Mau != "" {
+		t.Errorf("nhận nhầm màu: %+v", ds)
+	}
+	ds = TachDong("+ A01 Đen-Xanh: 1.000k")
+	if ds[0].Mau != "Den/Xanh" || ds[0].TenHang != "A01" {
+		t.Errorf("màu nối gạch sai: %+v", ds[0])
+	}
+}
+
+func TestSLTruocGiaVaSLIt(t *testing.T) {
+	ds := TachDong("+ A01 (4/64): SL 5: 1.100k")
+	if len(ds) != 1 || ds[0].SLMin != 5 {
+		t.Errorf("SL trước giá sai: %+v", ds)
+	}
+	ds = TachDong("+ A01 (4/64): 1.111k SL ít - SL 10: 1.000k")
+	if len(ds) != 2 || ds[1].SLMin != 10 || ds[0].SLMin != 1 {
+		t.Errorf("SL ít bị coi là bậc: %+v", ds)
+	}
+}
+
+func TestRamRomHopLe(t *testing.T) {
+	ds := TachDong("+ Zfold 9/ 5G 256G: 33.333k Đen")
+	if ds[0].CauHinh != "256" || ds[0].TenHang != "Zfold 9 5G (256)" {
+		t.Errorf("sai: %+v", ds[0])
+	}
+	ds = TachDong("+ Tab A9 (2025) 64G: 2.000k")
+	if ds[0].CauHinh != "64" || ds[0].TenHang != "Tab A9 2025 (64)" {
+		t.Errorf("sai: %+v", ds[0])
+	}
+}
+
+func TestGhiChuKhongDoiKhoi(t *testing.T) {
+	ds := DocVanBan("Chưa kích\n+ A01: 1.000k\nLưu ý: máy đã kích hoạt không đổi trả\n+ A02: 1.000k\n", "N", "01/01/2026")
+	if len(ds) != 2 || ds[1].LoaiHang != ChuaKich {
+		t.Errorf("khối bị đổi bởi ghi chú: %+v", ds)
 	}
 }

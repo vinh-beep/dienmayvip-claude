@@ -126,42 +126,45 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		dinhKem := 0
 		for _, t := range thu {
 			hd := DocEmail(t.Text)
-			if hd == nil {
-				// thư chỉ có đính kèm XML: đọc thẳng
-				for _, d := range t.DinhKem {
-					if strings.HasSuffix(strings.ToLower(d.Ten), ".pdf") {
-						continue
-					}
-					x := &HoaDon{Nguon: "imap", TrangThai: "moi"}
-					if DocXMLHoaDon(d.Du, x) == nil && khopNCC(x, c.LocNCC, c.MSTNCC) {
-						hd = x
-						break
-					}
+			var xmlDu, pdfDu []byte
+			for _, d := range t.DinhKem {
+				switch strings.ToLower(filepath.Ext(d.Ten)) {
+				case ".pdf":
+					pdfDu = d.Du
+				default:
+					xmlDu = d.Du
 				}
+			}
+			if xmlDu != nil { // XML đính kèm là nguồn chính xác nhất: đọc trước khi lọc/đặt tên
 				if hd == nil {
+					hd = &HoaDon{TrangThai: "moi"}
+				}
+				if err := DocXMLHoaDon(xmlDu, hd); err != nil && hd.So == "" {
 					continue
 				}
 			}
-			if !khopNCC(hd, c.LocNCC, "") {
+			if hd == nil || !khopNCC(hd, c.LocNCC, c.MSTNCC) {
 				continue
 			}
 			hd.Nguon = "imap"
-			// lưu đính kèm
 			tm := filepath.Join(thuMucHD, tenThuMuc(hd.NCC))
-			for _, d := range t.DinhKem {
+			ghi := func(du []byte, duoi string) string {
+				if du == nil {
+					return ""
+				}
 				_ = os.MkdirAll(tm, 0o755)
-				duoi := strings.ToLower(filepath.Ext(d.Ten))
 				p := filepath.Join(tm, tenTepHD(hd, duoi))
-				if err := os.WriteFile(p, d.Du, 0o644); err != nil {
-					continue
+				if err := os.WriteFile(p, du, 0o644); err != nil {
+					return ""
 				}
 				dinhKem++
-				if duoi == ".pdf" {
-					hd.TepPDF = p
-				} else {
-					hd.TepXML = p
-					_ = DocXMLHoaDon(d.Du, hd)
-				}
+				return p
+			}
+			if p := ghi(xmlDu, ".xml"); p != "" {
+				hd.TepXML = p
+			}
+			if p := ghi(pdfDu, ".pdf"); p != "" {
+				hd.TepPDF = p
 			}
 			ds = append(ds, hd)
 		}

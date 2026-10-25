@@ -5,6 +5,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -89,9 +90,12 @@ func TestDocTepVaLocNCC(t *testing.T) {
 }
 
 func TestDanhSachLink(t *testing.T) {
-	ds, err := DocDanhSachLink([]byte(`[{"NCC":"CÔNG TY TNHH THƯƠNG MẠI - DỊCH VỤ KHƯƠNG VIỆT","So":"5117","KyHieu":"c24tkv","EmailNgay":"20/11/2024","LinkXML":"https://x/2","LinkPDF":"https://x/3"}]`))
-	if err != nil || len(ds) != 1 || ds[0].KyHieu != "C24TKV" || ds[0].Nguon != "bridge" || ds[0].LinkPDF == "" {
+	ds, err := DocDanhSachLink([]byte(`[{"NCC":"CÔNG TY TNHH THƯƠNG MẠI - DỊCH VỤ KHƯƠNG VIỆT","So":"5117","KyHieu":"c24tkv","EmailNgay":"20/11/2024","LinkXML":"https://x/2","LinkPDF":"https://x/3"},{"NCC":"CÔNG TY TCT","So":"00020588","KyHieu":"1C26TTC","MaTraCuu":"BBFAKE0CODE2","LinkTraCuu":"https://www.meinvoice.vn/tra-cuu/?sc=BBFAKE0CODE2"}]`))
+	if err != nil || len(ds) != 2 || ds[0].KyHieu != "C24TKV" || ds[0].Nguon != "bridge" || ds[0].LinkPDF == "" {
 		t.Fatalf("sai: %v %+v", err, ds)
+	}
+	if ds[1].So != "20588" || ds[1].KyHieu != "C26TTC" || ds[1].MauSo != "1" || !strings.Contains(ds[1].LinkXML, "DownloadHandler.ashx?Type=xml&Code=BBFAKE0CODE2") {
+		t.Errorf("link MISA sai: %+v", ds[1])
 	}
 }
 
@@ -103,7 +107,11 @@ func TestDoiChieu(t *testing.T) {
 		{TenHang: "Tab A11 4G (4/64)", Model: "X135", CauHinh: "4/64", Ngay: "13/10/2026", SLMin: 1, DonGia: 900000},
 		{TenHang: "Tab A11 Wifi (4/64)", Model: "X133", CauHinh: "4/64", Ngay: "13/10/2026", SLMin: 1, DonGia: 800000},
 	}
+	bg = append([]DongGia{{TenHang: "A07S (4/64)", CauHinh: "4/64", Ngay: "08/10/2026", SLMin: 1, DonGia: 1200000, LoaiHang: DaKich}}, bg...)
 	g := DoiChieu(DongHD{Ten: "Điện thoại Samsung Galaxy A07 4GB/64GB Đen"}, "08/10/2026", bg)
+	if g != nil && g.TenHang == "A07S (4/64)" {
+		t.Error("A07 khớp nhầm A07S")
+	}
 	if g == nil || g.Ngay != "06/10/2026" || g.SLMin != 1 {
 		t.Errorf("đối chiếu A07 sai: %+v", g)
 	}
@@ -155,10 +163,10 @@ CÔNG TY TNHH ĐẦU TƯ & PHÂN PHỐI THIẾT BỊ VIỄN THÔNG LONG HƯNG xi
 * Số: *00002146*
 * Ngày: *06/10/2026*
 * Ký hiệu: *1C26TLH*
-* Mã của cơ quan thuế: *005EB2E807066A41C88D2CBCDE137A0159*
+* Mã của cơ quan thuế: *00FAKE00000000000000000000000000CQT*
 
-TRA CỨU ( https://www.meinvoice.vn/tra-cuu/?sc=7NFQCJ35K6PL&m=vinh@dienmayvip.com&n=DIENMAYVIP&c=&b=&d=0&t=1&r=1 )
-Hoặc truy cập vào đường dẫn https://www.meinvoice.vn/tra-cuu và nhập mã số: *7NFQCJ35K6PL*
+TRA CỨU ( https://www.meinvoice.vn/tra-cuu/?sc=AAFAKE0CODE1&m=vinh@dienmayvip.com&n=DIENMAYVIP&c=&b=&d=0&t=1&r=1 )
+Hoặc truy cập vào đường dẫn https://www.meinvoice.vn/tra-cuu và nhập mã số: *AAFAKE0CODE1*
 `
 
 func TestDocEmailMISA(t *testing.T) {
@@ -166,23 +174,44 @@ func TestDocEmailMISA(t *testing.T) {
 	if hd == nil {
 		t.Fatal("không đọc được email MISA")
 	}
-	if hd.So != "2146" || hd.KyHieu != "1C26TLH" || hd.NgayLap != "06/10/2026" || hd.MaCQT != "005EB2E807066A41C88D2CBCDE137A0159" || hd.MaTraCuu != "7NFQCJ35K6PL" {
+	if hd.So != "2146" || hd.KyHieu != "C26TLH" || hd.MauSo != "1" || hd.NgayLap != "06/10/2026" || hd.MaCQT != "00FAKE00000000000000000000000000CQT" || hd.MaTraCuu != "AAFAKE0CODE1" {
 		t.Errorf("sai: %+v", hd)
 	}
 	if hd.NCC != "CÔNG TY TNHH ĐẦU TƯ & PHÂN PHỐI THIẾT BỊ VIỄN THÔNG LONG HƯNG" {
 		t.Errorf("NCC sai: %q", hd.NCC)
 	}
-	if hd.LinkXML != "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=7NFQCJ35K6PL" || hd.LinkTraCuu == "" {
+	if hd.LinkXML != "https://www.meinvoice.vn/tra-cuu/DownloadHandler.ashx?Type=xml&Code=AAFAKE0CODE1" || hd.LinkTraCuu == "" {
 		t.Errorf("link sai: %+v", hd)
 	}
 	if !khopNCC(hd, "KHUONG VIET, TCT, LONG HUNG, THANH LIEM", "") || khopNCC(hd, "KHUONG VIET, TCT", "") {
 		t.Error("lọc nhiều NCC sai")
 	}
 	// TCT dạng bảng "| Số: 00020588 |"
-	tct := "CÔNG TY TNHH THƯƠNG MẠI ĐIỆN TỬ TCT thông báo gửi Hóa đơn giá trị gia tăng cho Quý khách\n| Số: 00020588 |\n| Ngày: 13/10/2026 |\n| Ký hiệu: 1C26TTC |\n[Tra cứu](https://www.meinvoice.vn/tra-cuu/?sc=DQF8CE6Q6GKD&m=x)\n"
+	tct := "CÔNG TY TNHH THƯƠNG MẠI ĐIỆN TỬ TCT thông báo gửi Hóa đơn giá trị gia tăng cho Quý khách\n| Số: 00020588 |\n| Ngày: 13/10/2026 |\n| Ký hiệu: 1C26TTC |\n[Tra cứu](https://www.meinvoice.vn/tra-cuu/?sc=BBFAKE0CODE2&m=x)\n"
 	hd = DocEmail(tct)
-	if hd == nil || hd.So != "20588" || hd.KyHieu != "1C26TTC" || hd.MaTraCuu != "DQF8CE6Q6GKD" || !khopNCC(hd, "TCT", "") {
+	if hd == nil || hd.So != "20588" || hd.KyHieu != "C26TTC" || hd.MauSo != "1" || hd.MaTraCuu != "BBFAKE0CODE2" || !khopNCC(hd, "TCT", "") {
 		t.Errorf("TCT sai: %+v", hd)
+	}
+	// "nhập mã số: *7NF…*" đứng trước dòng Số: không được lấy nhầm số HĐ
+	hd = DocEmail("CÔNG TY TNHH X thông báo gửi Hóa đơn\nnhập mã số: *7NFQ0000AAAA*\n* Số: *00000012*\n* Ký hiệu: *1C26TXX*\nhttps://www.meinvoice.vn/tra-cuu/?sc=7NFQ0000AAAA")
+	if hd == nil || hd.So != "12" {
+		t.Errorf("số HĐ bị nhầm với mã tra cứu: %+v", hd)
+	}
+	// Thư chỉ có "xin gửi cho Quý khách" (thiếu dòng tiêu đề) vẫn ra tên người bán
+	hd = DocEmail("CÔNG TY TNHH Y xin gửi cho Quý khách Hóa đơn giá trị gia tăng\n* Số: *00000013*\nhttps://www.meinvoice.vn/tra-cuu/?sc=ZZFAKE000000")
+	if hd == nil || hd.NCC != "CÔNG TY TNHH Y" {
+		t.Errorf("tên người bán fallback sai: %+v", hd)
+	}
+	// MST có thẩm quyền: khớp tên nhưng MST khác → từ chối
+	x := &HoaDon{NCC: "CÔNG TY TCT", MST: "999"}
+	if khopNCC(x, "TCT", "111") || !khopNCC(x, "TCT", "111, 999") || !khopNCC(&HoaDon{NCC: "CÔNG TY TCT"}, "TCT", "111") {
+		t.Error("khopNCC theo MST sai")
+	}
+	if ms, kh := tachKyHieu("1C26TLH"); ms != "1" || kh != "C26TLH" {
+		t.Error("tachKyHieu sai")
+	}
+	if _, kh := tachKyHieu("C24TKV"); kh != "C24TKV" {
+		t.Error("tachKyHieu Fast sai")
 	}
 	ds := tachKhoiEmail(mailMISA + "\n\n" + tct + "\n" + mailMau)
 	if len(ds) != 3 {
@@ -195,5 +224,25 @@ func TestDocThuDinhKem(t *testing.T) {
 	th := DocThu(raw)
 	if th.Text == "" || len(th.DinhKem) != 1 || th.DinhKem[0].Ten != "1C26MTL_00001972.xml" || string(th.DinhKem[0].Du) != "<HDon></HDon>" {
 		t.Errorf("đính kèm sai: %+v", th)
+	}
+}
+
+func TestGopHoaDonKhacCachGhiKyHieu(t *testing.T) {
+	k := &Kho{duong: filepath.Join(t.TempDir(), "k.json")}
+	n, err := k.ThemHoaDon([]*HoaDon{{So: "2146", KyHieu: "1C26TLH", NCC: "LH", Nguon: "imap"}})
+	if err != nil || n != 1 {
+		t.Fatal(err, n)
+	}
+	n, _ = k.ThemHoaDon([]*HoaDon{{So: "2146", KyHieu: "C26TLH", MauSo: "1", NCC: "LH", Nguon: "thu-muc", TepXML: "x.xml"}})
+	if n != 0 || len(k.HoaDon) != 1 || k.HoaDon[0].KyHieu != "C26TLH" || k.HoaDon[0].MauSo != "1" || k.HoaDon[0].TepXML != "x.xml" {
+		t.Errorf("không gộp được: %d %+v", n, k.HoaDon)
+	}
+}
+
+func TestDocThuCoTieuDe(t *testing.T) {
+	raw := "From: a@b\r\nSubject: =?UTF-8?B?Q8OUTkcgVFkgVENUIGfhu61pIGhvw6EgxJHGoW4gc+G7kSAwMDAyMDU4OA==?=\r\nContent-Type: text/plain; charset=utf-8\r\n\r\nxin chao\r\n"
+	th := DocThu(raw)
+	if !strings.HasPrefix(th.Text, "CÔNG TY TCT gửi hoá đơn số 00020588") {
+		t.Errorf("thiếu tiêu đề: %q", th.Text)
 	}
 }

@@ -17,6 +17,7 @@ import (
 	"net/mail"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -118,10 +119,10 @@ func TimEmailHDDTIMAP(user, matKhau, nguoiGui, tuNgay string, toiDa int) ([]ThuH
 	var ids []string
 	gui := tachDS(nguoiGui)
 	if len(gui) == 0 {
-		gui = []string{"einvoice@fastsoftware.com.vn"}
+		gui = tachDS(cauHinhMacDinh().NguoiGuiHDDT)
 	}
 	for _, g := range gui {
-		dong, err := k.lenh(`SEARCH FROM "` + g + `"` + since)
+		dong, err := k.lenh("SEARCH FROM " + imapQuote(g) + since)
 		if err != nil {
 			return nil, err
 		}
@@ -131,6 +132,8 @@ func TimEmailHDDTIMAP(user, matKhau, nguoiGui, tuNgay string, toiDa int) ([]ThuH
 			}
 		}
 	}
+	// gộp nhiều người gửi → sắp theo số thứ tự thư (cũ → mới) rồi mới cắt, giữ thư mới nhất
+	sort.Slice(ids, func(i, j int) bool { a, _ := strconv.Atoi(ids[i]); b, _ := strconv.Atoi(ids[j]); return a < b })
 	if len(ids) > toiDa {
 		ids = ids[len(ids)-toiDa:]
 	}
@@ -162,6 +165,9 @@ func DocThu(raw string) ThuHDDT {
 	}
 	body, _ := io.ReadAll(msg.Body)
 	th.Text = docPhanMIME2(string(body), msg.Header.Get("Content-Type"), msg.Header.Get("Content-Transfer-Encoding"), msg.Header.Get("Content-Disposition"), &th.DinhKem)
+	if sub, err := dec.DecodeHeader(msg.Header.Get("Subject")); err == nil && sub != "" {
+		th.Text = sub + "\n" + th.Text // tiêu đề chứa tên người bán + số HĐ
+	}
 	return th
 }
 
@@ -229,44 +235,8 @@ func tenDinhKem(ct, cd string) string {
 	return ""
 }
 
-// DocNoiDungMail rút text (ưu tiên text/plain, không thì HTML bỏ thẻ) từ thư MIME thô.
-func DocNoiDungMail(raw string) string {
-	msg, err := mail.ReadMessage(strings.NewReader(raw))
-	if err != nil {
-		return giaiMaPhan(raw, "", "")
-	}
-	ct := msg.Header.Get("Content-Type")
-	cte := msg.Header.Get("Content-Transfer-Encoding")
-	body, _ := io.ReadAll(msg.Body)
-	return docPhanMIME(string(body), ct, cte)
-}
-
-func docPhanMIME(body, ct, cte string) string {
-	mt, params, _ := mime.ParseMediaType(ct)
-	if strings.HasPrefix(mt, "multipart/") && params["boundary"] != "" {
-		mr := multipart.NewReader(strings.NewReader(body), params["boundary"])
-		plain, html := "", ""
-		for {
-			p, err := mr.NextPart()
-			if err != nil {
-				break
-			}
-			b, _ := io.ReadAll(p)
-			t := docPhanMIME(string(b), p.Header.Get("Content-Type"), p.Header.Get("Content-Transfer-Encoding"))
-			pct, _, _ := mime.ParseMediaType(p.Header.Get("Content-Type"))
-			if pct == "text/plain" && plain == "" {
-				plain = t
-			} else if t != "" && html == "" {
-				html = t
-			}
-		}
-		if plain != "" {
-			return plain
-		}
-		return html
-	}
-	return giaiMaPhan(body, mt, cte)
-}
+// DocNoiDungMail rút text từ thư MIME thô (bọc DocThu).
+func DocNoiDungMail(raw string) string { return DocThu(raw).Text }
 
 var reThe = regexp.MustCompile(`(?s)<[^>]+>`)
 var reHref = regexp.MustCompile(`(?is)<a[^>]*href="([^"]+)"[^>]*>`)

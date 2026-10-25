@@ -25,20 +25,58 @@ COT = [
     "LoaiHang", "BaoHanh", "SL_Min", "DonGia_VND", "GhiChu",
 ]
 
-# Màu hay gặp trong tin NCC (không dấu, chữ thường). Cụm dài xếp trước.
+# Màu: (khoá không dấu, tên chuẩn, các cách viết CÓ DẤU đúng). Một từ chỉ là màu khi viết đúng dấu
+# (đen, bạc, hồng, tím, trắng) hoặc hoàn toàn không dấu (Den, Bac) — để "đến", "bậc", "hỏng", "tìm",
+# "trạng" không bị nhận nhầm. Cụm 2 từ xếp trước.
 MAU = [
-    ("xanh duong", "Xanh duong"), ("x duong", "Xanh duong"), ("x blue", "Xanh duong"),
-    ("xanh blue", "Xanh duong"), ("blue", "Xanh duong"),
-    ("xanh la", "Xanh la"), ("x la", "Xanh la"),
-    ("xanh", "Xanh"), ("den", "Den"), ("tim", "Tim"), ("trang", "Trang"), ("xam", "Xam"),
-    ("bac", "Bac"), ("pink", "Hong"), ("hong", "Hong"), ("vang", "Vang"),
+    ("xanh duong", "Xanh duong", ("xanh dương",)), ("x duong", "Xanh duong", ("x dương",)),
+    ("x blue", "Xanh duong", ()), ("xanh blue", "Xanh duong", ()), ("blue", "Xanh duong", ()),
+    ("xanh la", "Xanh la", ("xanh lá",)), ("x la", "Xanh la", ("x lá",)),
+    ("xanh", "Xanh", ()), ("den", "Den", ("đen",)), ("tim", "Tim", ("tím",)),
+    ("trang", "Trang", ("trắng",)), ("xam", "Xam", ("xám",)),
+    ("bac", "Bac", ("bạc",)), ("pink", "Hong", ()), ("hong", "Hong", ("hồng",)), ("vang", "Vang", ("vàng",)),
 ]
+TACH_TU = re.compile(r"([().,:;*/\-\s]+)")
 
-# Giá: "5.360k", "16.890", "990k". Số trơn không có "k" (vd 128, 256) KHÔNG phải giá.
+
+def la_mau(tu_goc: str, khoa: str, co_dau) -> bool:
+    t = tu_goc.strip().lower()
+    return (t == khoa and bo_dau(t) == t) or t in co_dau
+
+
+def _duyet_mau(chuoi: str, xoa: bool):
+    """Trả về (danh sách màu chuẩn, chuỗi đã xoá màu nếu xoa=True)."""
+    manh = [m for m in TACH_TU.split(chuoi) if m != ""]
+    ket, ra = [], []
+    i = 0
+    while i < len(manh):
+        t = manh[i]
+        if TACH_TU.fullmatch(t):
+            ra.append(t); i += 1; continue
+        hit = None
+        if i + 2 < len(manh) and TACH_TU.fullmatch(manh[i + 1]) and not TACH_TU.fullmatch(manh[i + 2]):
+            cum = t + " " + manh[i + 2]
+            hit = next((c for k, c, d in MAU if " " in k and la_mau(cum, k, d)), None)
+            if hit:
+                i += 3
+        if hit is None:
+            hit = next((c for k, c, d in MAU if " " not in k and la_mau(t, k, d)), None)
+            if hit is None:
+                ra.append(t); i += 1; continue
+            i += 1
+        if hit not in ket:
+            ket.append(hit)
+        ra.append(" ")
+    return ket, ("".join(ra) if xoa else chuoi)
+
+
 GIA_RE = re.compile(r"(?<![\w/])(\d{1,3}(?:\.\d{3})+k?|\d{2,6}k)(?![\w/])", re.IGNORECASE)
 SL_RE = re.compile(r"\bsl\s*:?\s*(\d+)?\s*c?\b", re.IGNORECASE)
-RAM_ROM_RE = re.compile(r"\(?\s*(\d+)\s*G?B?\s*/\s*(\d+)\s*G?B?\s*\)?", re.IGNORECASE)
-ROM_RE = re.compile(r"(?:\(\s*(\d{2,4})\s*\)|\b(\d{2,4})\s*G\b|\b(32|64|126|128|256|512|1024)\b)", re.IGNORECASE)
+SL_TRUOC_RE = re.compile(r"\bsl\s*:?\s*(\d+)\s*c?\s*:?\s*$", re.IGNORECASE)
+SL_IT_RE = re.compile(r"\bsl\s*(ít|it)\b", re.IGNORECASE)
+ROM = r"(32|64|126|128|256|512|1024)"
+RAM_ROM_RE = re.compile(r"\(?\s*(2|3|4|6|8|12|16)\s*G?B?\s*/\s*" + ROM + r"\s*G?B?\s*\)?", re.IGNORECASE)
+ROM_RE = re.compile(r"(?:\(\s*" + ROM + r"\s*\)|\b" + ROM + r"\s*G\b|\b" + ROM + r"\b)", re.IGNORECASE)
 MA_RE = re.compile(r"\b([A-Z]\d{3}[A-Z]?)\b")
 MANG = {"4G", "5G", "LTE", "WIFI", "4G LTE"}
 
@@ -50,7 +88,7 @@ def bo_dau(s: str) -> str:
 
 
 def doc_gia(chuoi: str) -> int:
-    """'5.360k' -> 5360000; '16.890' -> 16890000; '990k' -> 990000."""
+    """'1.234k' -> 1234000; '12.345' -> 12345000; '555k' -> 555000 (số minh hoạ)."""
     gia = int(chuoi.lower().rstrip("k").replace(".", ""))
     if gia < 100_000:  # NCC ghi theo nghìn đồng
         gia *= 1000
@@ -67,26 +105,8 @@ class DongHang:
     ghi_chu: list[str] = field(default_factory=list)
 
 
-def tim_mau(chuoi: str) -> list[str]:
-    text = " " + " ".join(re.sub(r"[().,:;*/-]", " ", bo_dau(chuoi).lower()).split()) + " "
-    ket: list[str] = []
-    for khoa, chuan in MAU:
-        if " " + khoa + " " in text:
-            if chuan not in ket:
-                ket.append(chuan)
-            text = text.replace(" " + khoa + " ", " ")
-    return ket
-
-
-def bo_mau(chuoi: str) -> str:
-    text = " " + " ".join(bo_dau(chuoi).split()) + " "
-    for khoa, _ in MAU:
-        text = re.sub(r"(?i)(?<=[ .,(/:])" + re.escape(khoa) + r"(?=[ .,)/:])", " ", text)
-    return " ".join(text.split())
-
-
 def tach_dong(dong: str) -> DongHang | None:
-    goc = dong.strip()
+    goc = dong.strip().lstrip("\ufeff").strip()
     if not goc.startswith("+"):
         return None
     than = goc[1:].replace("*", " ")
@@ -94,13 +114,20 @@ def tach_dong(dong: str) -> DongHang | None:
     gias = [(m.start(), m.end(), m.group(1)) for m in GIA_RE.finditer(than)]
     if not gias:
         return None
-    gia_list = [(1, doc_gia(gias[0][2]))]
+    dau_gia = gias[0][0]
+    sl_dau = 1
+    m_sl = SL_TRUOC_RE.search(than[:dau_gia])
+    if m_sl:  # "SL 5: 1.100k" ngay trước giá đầu
+        sl_dau, dau_gia = int(m_sl.group(1)), m_sl.start()
+    gia_list = [(sl_dau, doc_gia(gias[0][2]))]
+    gia_le = []
     for i in range(1, len(gias)):
-        truoc = than[gias[i - 1][1]:gias[i][0]]
+        truoc = SL_IT_RE.sub(" ", than[gias[i - 1][1]:gias[i][0]])  # "SL ít" = sắp hết, không phải bậc
         sl = SL_RE.search(truoc)
         if sl:
             gia_list.append((int(sl.group(1)) if sl.group(1) else 0, doc_gia(gias[i][2])))
-    dau_gia = gias[0][0]
+        else:
+            gia_le.append(gias[i][2])
 
     phan_ten = than[:dau_gia]
     ch = RAM_ROM_RE.search(phan_ten)
@@ -136,9 +163,20 @@ def tach_dong(dong: str) -> DongHang | None:
             ghi_chu.append(manh)
     if any(sl == 0 for sl, _ in gia_list):
         ghi_chu.append("SL: NCC khong ghi so - hoi lai")
+    if gia_le:
+        ghi_chu.append("Gia khac trong dong (khong ro bac): " + ", ".join(gia_le))
+        print(f"CANH BAO: dong co gia khong ro bac SL, da ghi vao GhiChu: {goc}", file=sys.stderr)
     ghi_chu = list(dict.fromkeys(ghi_chu))
 
     return DongHang(ten=ten, model=model, cau_hinh=cau_hinh, mau=mau, gia=gia_list, ghi_chu=ghi_chu)
+
+
+def tim_mau(chuoi: str) -> list[str]:
+    return _duyet_mau(chuoi, False)[0]
+
+
+def bo_mau(chuoi: str) -> str:
+    return " ".join(bo_dau(_duyet_mau(chuoi, True)[1]).split())
 
 
 def doc_van_ban(van_ban: str) -> list[tuple[str, DongHang]]:
@@ -148,9 +186,11 @@ def doc_van_ban(van_ban: str) -> list[tuple[str, DongHang]]:
     for dong in van_ban.splitlines():
         thap = bo_dau(dong).lower()
         if not dong.strip().startswith("+"):
-            if "chua kich" in thap:
+            t = thap.strip()
+            la_tieu_de = len(t) <= 80 and not t.startswith(("luu y", "chu y", "note"))
+            if la_tieu_de and "chua kich" in t:
                 loai = "Chua kich hoat"
-            elif "kich hoat" in thap or "da kich" in thap:
+            elif la_tieu_de and ("kich hoat" in t or "da kich" in t):
                 loai = "Da kich hoat"
             continue
         dh = tach_dong(dong)
@@ -181,7 +221,7 @@ def main(argv=None) -> int:
     p.add_argument("--vao", required=True)
     p.add_argument("--ra", required=True)
     a = p.parse_args(argv)
-    with open(a.vao, encoding="utf-8") as f:
+    with open(a.vao, encoding="utf-8-sig") as f:
         van_ban = f.read()
     hang = ra_csv(doc_van_ban(van_ban), a.ncc, a.ngay, a.nhom)
     with open(a.ra, "w", encoding="utf-8", newline="") as f:

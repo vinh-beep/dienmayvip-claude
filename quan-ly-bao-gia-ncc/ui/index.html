@@ -229,7 +229,7 @@ const nhanNguon={email:'Email',bridge:'Bridge (AI Cloud)',imap:'Gmail IMAP',ever
 const nhanTT={moi:'<span class="nhan chua">Chưa tải</span>','da-tai':'<span class="nhan da">Đã tải</span>','da-doc':'<span class="nhan da">Đã đọc XML</span>',loi:'<span class="nhan" style="background:#fee2e2;color:#b91c1c">Lỗi</span>'};
 async function taiHDDT(){const r=await fetch('/api/hddt');HDDT=await r.json();document.getElementById('demHD').textContent=HDDT.hoaDon.length;if(TAB==='hddt')veHDDT()}
 let LOC_HD='';
-function veHDDT(){const nccs=[...new Set(HDDT.hoaDon.map(d=>nccNgan(d.ncc)||'?'))].sort();const ds=HDDT.hoaDon.filter(d=>!LOC_HD||(nccNgan(d.ncc)||'?')===LOC_HD);let h='<div class="the">';
+function veHDDT(){const nccs=[...new Set(HDDT.hoaDon.map(d=>nccNgan(d.ncc)||'?'))].sort();if(LOC_HD&&!nccs.includes(LOC_HD))LOC_HD='';const ds=HDDT.hoaDon.filter(d=>!LOC_HD||(nccNgan(d.ncc)||'?')===LOC_HD);let h='<div class="the">';
   h+=`<div class="hang"><label>NCC</label><select onchange="LOC_HD=this.value;veHDDT()"><option value="">Tất cả (${HDDT.hoaDon.length})</option>${nccs.map(n=>`<option ${n===LOC_HD?'selected':''} value="${esc(n)}">${esc(n)} (${HDDT.hoaDon.filter(d=>(nccNgan(d.ncc)||'?')===n).length})</option>`).join('')}</select><span class="ghi">${ds.length} hoá đơn</span></div>`;
   h+=`<div class="ghi" style="margin-bottom:8px">Tệp link trên Bridge: ${HDDT.tepBridge.length?HDDT.tepBridge.map(t=>esc(t.split(/[\\/]/).pop())).join(', '):'(chưa có — Claude Cloud sẽ ghi hddt-links-*.json khi tìm email) '} · <a href="#" onclick="document.getElementById('hopDanJSON').style.display='';return false">dán JSON tay</a> · Tệp tải về: ${esc(HDDT.thuMucHD)}</div>`;
   if(!ds.length){h+='<div class="trong">Chưa có hoá đơn. Bấm "Nạp từ Bridge" hoặc "Tìm bằng Everything".</div></div>';document.getElementById('bang-hddt').innerHTML=h;return}
@@ -274,7 +274,7 @@ async function docTin(){
   if(!vanBan.trim())return baoCao('Chưa dán tin NCC',true);
   const r=await fetch('/api/doc-tin',{method:'POST',body:JSON.stringify({VanBan:vanBan,NCC:ncc,Ngay:ngay})});
   XEM_TRUOC=(await r.json()).map(d=>({...d,giu:true}));
-  if(!XEM_TRUOC.length)return baoCao('Không đọc được dòng giá nào. Mỗi mặt hàng phải bắt đầu bằng dấu + và có giá dạng 5.360k',true);
+  if(!XEM_TRUOC.length)return baoCao('Không đọc được dòng giá nào. Mỗi mặt hàng phải bắt đầu bằng dấu + và có giá dạng 1.234k',true);
   veXemTruoc()}
 
 function docCSV(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{
