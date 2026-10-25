@@ -40,6 +40,8 @@ Mẫu chuẩn cho mọi công cụ mới trên máy chính: **mặc định ch�
 |---|---|---|---|
 | `harness2-chay-bu/` (nhánh `claude/magical-volta-z46fnn`, PR #1) | lịch gốc ghi "xong" vào `trang-thai-h2.json` | lúc khởi động quét việc lỡ, chạy bù trong cửa sổ 12 giờ, ghi `ket-qua-PC-H2-*` | việc tiền không bao giờ tự chạy; cửa RAM; kiểm quyền 1 lần |
 | `drive-sync/kiem_an_toan.py` + `hoc_tu_chan.py` | quét tên + nội dung, chặn fail-closed | anh phán xử oan/đúng → `bai-hoc-chan.json` + `so-bai-hoc-chan.md`; vòng 1 cho qua tệp "oan" khi SHA-256 còn khớp | `LUAT_CUNG`: bí mật, giá vốn, CCCD, tên tệp nhạy cảm — không nhận ngoại lệ |
+| `drive-sync/dong_bo_drive.py` (base, 25/10) | `rclone copy` | **đọc lại đích** bằng `rclone check --one-way` sau mỗi lượt thật; hỏng thì không ghi mốc thành công ("tải về ≠ đã nạp") | chỉ `copy`, không `sync`/xoá |
+| `kiem_tat_ca.py` + CI Ubuntu/Windows (base, 25/10) | bộ kiểm thử | **tự kiểm bộ kiểm** bằng đột biến: cố ý phá 15 chỗ (tắt token, tắt chặn giá vốn, `copy`→`sync`…), bộ kiểm phải đỏ | đột biến nào vẫn xanh = lỗ hổng → mã thoát 1 |
 | `sql-readonly-api/` | chặn cột nghi giá vốn/PII khi khởi động; khoá IP sau 10 lần sai | *chưa có* — đề xuất: đếm số lần khoá IP oan và số view bị từ chối nhầm vào `api-audit.log`, tổng hợp hằng tuần | từ chối khởi động nếu login có quyền ghi |
 
 ### Cách nối vòng 2 vào một công cụ mới (checklist)
@@ -67,4 +69,5 @@ Mẫu chuẩn cho mọi công cụ mới trên máy chính: **mặc định ch�
 - **25/10/2026 21h38** (Cloud): định nghĩa Harness², luật H1–H9 từ 8 tinh hoa 24–25/10.
 - **25/10/2026 21h45** (anh Vĩnh duyệt): Harness² tự chạy bù việc lỡ, trừ ngân hàng/tiền, cửa sổ 12 giờ.
 - **25/10/2026 21h55** (Cloud): dựng `harness2-chay-bu/`, 16/16 test, thêm H10.
+- **25/10/2026 ~22h** (Cloud, nhánh base): đọc lại đích sau khi đẩy, `--kiem-nhe`/`--kiem`, `kiem_tat_ca.py --tu-kiem` (đột biến), CI Ubuntu + Windows, vá console cp1252.
 - **25/10/2026 23h00** (Cloud, phiên này): thêm vòng 2 cho bộ chặn drive-sync (`hoc_tu_chan.py`, 17 test mới, 71/71 qua), chốt `LUAT_CUNG`/`LUAT_MEM`, tài liệu này.

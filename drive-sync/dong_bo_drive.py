@@ -72,6 +72,7 @@ def load_config(path: Path) -> dict[str, Any]:
     cfg.setdefault("rclone", "rclone")
     cfg.setdefault("bao_loi_sau_gio", 24)
     cfg.setdefault("cho_phep_duoi_khong_quet", [])
+    cfg.setdefault("xac_minh", True)
     parse_size(cfg["max_size"]), parse_age(cfg["max_age"]), parse_age(cfg["min_age"])
     return cfg
 
@@ -89,14 +90,38 @@ def build_rclone_cmd(cfg: dict[str, Any], src: str, dest: str, list_file: Path, 
     return cmd
 
 
+def build_rclone_check_cmd(cfg: dict[str, Any], src: str, dest: str, list_file: Path, log_file: Path) -> list[str]:
+    """Đọc lại ĐÍCH: mọi tệp trong danh sách phải có trên Drive và khớp (một chiều, không xóa/sửa gì)."""
+    return [
+        cfg["rclone"], "check", src, f"{cfg['remote']}{dest}",
+        "--files-from", str(list_file), "--one-way",
+        "--log-file", str(log_file), "--log-level", "INFO",
+    ]
+
+
 def _now_vn(now: float | None) -> datetime:
     return datetime.fromtimestamp(now, VN) if now is not None else datetime.now(VN)
 
 
-def _write_json_atomic(path: Path, data: Any) -> None:
+def _write_json_atomic(path: Path, data: Any, *, tries: int = 5, wait_s: float = 0.2) -> None:
+    """Ghi nguyên khối. Trên Windows os.replace báo PermissionError nếu có tiến trình khác (Drive, antivirus)
+    đang mở tệp đích; thử lại vài lần thay vì hỏng (bài học port POSIX → Windows 25/10/2026)."""
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    os.replace(tmp, path)
+    for attempt in range(tries):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if attempt == tries - 1:
+                raise
+            time.sleep(wait_s)
+
+
+def _write_lines(path: Path, lines: list[str]) -> None:
+    """Danh sách cho rclone --files-from: luôn xuống dòng \\n, UTF-8 không BOM (Windows mặc định \\r\\n)."""
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 def doc_cho_phep_tep(path: Path) -> dict[str, str]:
@@ -210,14 +235,22 @@ def chay_dong_bo(
 
             if scan.allowed:
                 list_file = log_dir / f"files-from-{item['dich']}.txt"
-                list_file.write_text("\n".join(scan.allowed) + "\n", encoding="utf-8")
+                _write_lines(list_file, scan.allowed)
                 log_file = log_dir / f"rclone-{item['dich']}-{stamp}.log"
                 cmd = build_rclone_cmd(cfg, str(src), item["dich"], list_file, log_file, chay_that=chay_that)
                 try:
-                    proc = runner(cmd, capture_output=True, text=True, timeout=3600)
+                    proc = runner(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=3600)
                     entry["rclone_ma"] = proc.returncode
                     if proc.returncode != 0:
                         status["loi"].append(f"rclone '{item['dich']}' mã {proc.returncode}")
+                    elif chay_that and cfg["xac_minh"]:
+                        check_log = log_dir / f"check-{item['dich']}-{stamp}.log"
+                        check = runner(build_rclone_check_cmd(cfg, str(src), item["dich"], list_file, check_log),
+                                       capture_output=True, encoding="utf-8", errors="replace", timeout=3600)
+                        entry["xac_minh"] = "dat" if check.returncode == 0 else "hong"
+                        if check.returncode != 0:
+                            status["loi"].append(
+                                f"Đọc lại Drive '{item['dich']}' không khớp (rclone check mã {check.returncode})")
                 except FileNotFoundError:
                     entry["rclone_ma"] = -1
                     status["loi"].append("Không tìm thấy rclone (kiểm đường dẫn 'rclone' trong cấu hình)")
@@ -240,7 +273,7 @@ def chay_dong_bo(
         if chay_that and status["ket_qua"] == "ok":
             try:  # file trạng thái nhỏ để Claude/Chuông đọc nhanh
                 runner([cfg["rclone"], "copyto", str(status_path), f"{cfg['remote']}{STATUS_NAME}"],
-                       capture_output=True, text=True, timeout=300)
+                       capture_output=True, encoding="utf-8", errors="replace", timeout=300)
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 pass
     return status
@@ -289,17 +322,66 @@ def kiem_tuoi(cfg: dict[str, Any], *, now: float | None = None) -> tuple[bool, s
     return False, msg
 
 
+def kiem_cau_hinh(cfg: dict[str, Any], *, day_du: bool, runner: Callable[..., Any] = subprocess.run) -> list[tuple[bool, str]]:
+    """--kiem-nhe: chỉ đọc cấu hình + thư mục, không mạng. --kiem: thêm gọi rclone (version + liệt kê thư mục gốc remote)."""
+    out: list[tuple[bool, str]] = []
+    for item in cfg["nguon"]:
+        ok = Path(item["thu_muc"]).is_dir()
+        out.append((ok, f"Thư mục nguồn '{item['dich']}': {'có' if ok else 'KHÔNG THẤY'}"))
+    log_dir = Path(cfg["thu_muc_log"])
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        probe = log_dir / ".ghi-thu"
+        probe.write_text("x", encoding="utf-8")
+        probe.unlink()
+        out.append((True, "Thư mục log ghi được"))
+    except OSError as exc:
+        out.append((False, f"Thư mục log không ghi được: {exc.__class__.__name__}"))
+    tin_dir = cfg.get("thu_muc_tin")
+    if tin_dir:
+        ok = Path(tin_dir).is_dir()
+        out.append((ok, f"Thư mục Bridge để ghi tin cảnh báo: {'có' if ok else 'KHÔNG THẤY (sẽ không báo được)'}"))
+    if day_du:
+        for label, cmd in (("rclone chạy được", [cfg["rclone"], "version"]),
+                           ("remote đọc được", [cfg["rclone"], "lsf", cfg["remote"], "--max-depth", "1", "--dirs-only"])):
+            try:
+                rc = runner(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=120).returncode
+                out.append((rc == 0, f"{label}: {'ok' if rc == 0 else f'mã {rc}'}"))
+            except FileNotFoundError:
+                out.append((False, f"{label}: không tìm thấy rclone"))
+            except subprocess.TimeoutExpired:
+                out.append((False, f"{label}: quá thời gian"))
+    return out
+
+
+def _utf8_console() -> None:
+    """Console Windows hay là cp1252/cp437: in tiếng Việt sẽ sập UnicodeEncodeError. Ép UTF-8, ký tự lạ thành '?'."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _utf8_console()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", required=True)
     ap.add_argument("--chay-that", action="store_true", help="ghi lên Drive (mặc định chỉ chạy thử)")
     ap.add_argument("--kiem-tuoi", action="store_true", help="chỉ kiểm có quá hạn chưa đồng bộ không")
+    ap.add_argument("--kiem-nhe", action="store_true", help="kiểm cấu hình + thư mục, không đụng mạng")
+    ap.add_argument("--kiem", action="store_true", help="như --kiem-nhe, thêm kiểm rclone và remote")
     args = ap.parse_args(argv)
     try:
         cfg = load_config(Path(args.config))
     except ConfigError as exc:
         print(f"LỖI cấu hình: {exc}", file=sys.stderr)
         return 1
+    if args.kiem_nhe or args.kiem:
+        results = kiem_cau_hinh(cfg, day_du=args.kiem)
+        for ok, msg in results:
+            print(("ĐẠT  " if ok else "HỎNG ") + msg)
+        return 0 if all(ok for ok, _ in results) else 1
     if args.kiem_tuoi:
         ok, msg = kiem_tuoi(cfg)
         print(msg)

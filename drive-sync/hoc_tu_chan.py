@@ -28,6 +28,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kiem_an_toan as an_toan  # noqa: E402
+import dong_bo_drive  # noqa: E402  (dùng chung bộ đọc cấu hình + ép console UTF-8 trên Windows)
 
 VN = timezone(timedelta(hours=7))
 PHAN_XU_NAME = "phan-xu-chan.json"     # phán xử của anh (append, không xoá)
@@ -306,6 +307,7 @@ def kiem_nhanh() -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
+    dong_bo_drive._utf8_console()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", help="dong_bo.config.json (cùng tệp với dong_bo_drive.py)")
     ap.add_argument("--phan-xu", nargs="+", metavar="DICH/REL=oan|dung", help="ghi phán xử của anh rồi tính lại sổ")
@@ -322,7 +324,6 @@ def main(argv: list[str] | None = None) -> int:
     if not args.config:
         print("Cần --config (hoặc --kiem)", file=sys.stderr)
         return 1
-    import dong_bo_drive  # noqa: E402  (dùng chung bộ đọc cấu hình, cùng luật từ chối cấu hình nguy hiểm)
     try:
         cfg = dong_bo_drive.load_config(Path(args.config))
         if args.phan_xu:
