@@ -669,14 +669,23 @@ func TimTepLinkTrenBridge(thuMuc string) []string {
 
 // ---------- Đối chiếu dòng hoá đơn với báo giá ----------
 
-var reModelHD = regexp.MustCompile(`\b([A-Z]\d{2,3}[A-Z]?|S\d{2}\s?(?:FE|ULTRA|\+)?|TAB\s?[AS]\d{1,2}|Z\s?FOLD\s?\d|Z\s?FLIP\s?\d)\b`)
+// Thứ tự nhánh quan trọng (leftmost-first): nhánh có hậu tố đứng trước nhánh chung để "S26 FE" ra "S26FE", không phải "S26".
+var reModelHD = regexp.MustCompile(`\b(TAB\s?[AS]\d{1,2}|Z\s?FOLD\s?\d|Z\s?FLIP\s?\d|S\d{2}\s?(?:FE|ULTRA|PLUS|EDGE|LITE)?|[A-Z]\d{2,3}[A-Z]?)\b`)
+var rePlusSauModel = regexp.MustCompile(`\b([A-Z]\d{2,3}[A-Z]?|S\d{2})\+`) // "S26+" → "S26PLUS"; "A17 + ốp" giữ nguyên
+var tienToHang = map[string]bool{"": true, "GALAXY": true, "SAMSUNG": true, "SAMSUNGGALAXY": true}
 var reSKU = regexp.MustCompile(`^[XFRLTA]\d{3}[A-Z]?$`)
 var reRomHD = regexp.MustCompile(`\b(\d{1,2})\s*G?B?\s*/\s*(\d{2,4})\s*G?B?\b|\b(64|128|256|512|1024)\s*GB?\b`)
 
+// chuanModel: chữ hoa, bỏ dấu, "S26+" → "S26PLUS".
+func chuanModel(ten string) string {
+	return rePlusSauModel.ReplaceAllString(strings.ToUpper(boDau(ten)), "${1}PLUS")
+}
+
 // DoiChieu tìm dòng báo giá gần ngày hoá đơn nhất, cùng model (ưu tiên mã SKU X133/F966/A076…),
-// và cùng cấu hình nếu hoá đơn ghi.
+// và cùng cấu hình nếu hoá đơn ghi. Lượt 1 đòi khớp model chính xác (không hậu tố biến thể),
+// lượt 2 mới cho phép quote có hậu tố FE/ULTRA/PLUS/EDGE/LITE.
 func DoiChieu(d DongHD, ngayHD string, baoGia []DongGia) *DongGia {
-	ten := strings.ToUpper(boDau(d.Ten))
+	ten := chuanModel(d.Ten)
 	var ungVien []string
 	for _, m := range reModelHD.FindAllStringSubmatch(ten, -1) {
 		x := strings.ReplaceAll(m[1], " ", "")
@@ -694,36 +703,42 @@ func DoiChieu(d DongHD, ngayHD string, baoGia []DongGia) *DongGia {
 			rom = r[3]
 		}
 	}
-	for _, model := range ungVien {
-		var tot *DongGia
-		for i := range baoGia {
-			g := &baoGia[i]
-			if g.SLMin != 1 {
-				continue
+	for _, chatChe := range []bool{true, false} {
+		for _, model := range ungVien {
+			var tot *DongGia
+			for i := range baoGia {
+				g := &baoGia[i]
+				if g.SLMin != 1 {
+					continue
+				}
+				if !strings.EqualFold(g.Model, model) && !coModel(g.TenHang, model, chatChe) {
+					continue
+				}
+				if rom != "" && g.CauHinh != "" && g.CauHinh != rom && !strings.HasSuffix(g.CauHinh, "/"+rom) && !strings.HasSuffix(rom, "/"+g.CauHinh) {
+					continue
+				}
+				if tot == nil || abs64(ngayKhoaInt(g.Ngay)-ngayKhoaInt(ngayHD)) < abs64(ngayKhoaInt(tot.Ngay)-ngayKhoaInt(ngayHD)) {
+					tot = g
+				}
 			}
-			if !strings.EqualFold(g.Model, model) && !coModel(g.TenHang, model) {
-				continue
+			if tot != nil {
+				return tot
 			}
-			if rom != "" && g.CauHinh != "" && g.CauHinh != rom && !strings.HasSuffix(g.CauHinh, "/"+rom) && !strings.HasSuffix(rom, "/"+g.CauHinh) {
-				continue
-			}
-			if tot == nil || abs64(ngayKhoaInt(g.Ngay)-ngayKhoaInt(ngayHD)) < abs64(ngayKhoaInt(tot.Ngay)-ngayKhoaInt(ngayHD)) {
-				tot = g
-			}
-		}
-		if tot != nil {
-			return tot
 		}
 	}
 	return nil
 }
 
-// Hậu tố được phép dính sau mã model trong tên báo giá: chung với mangTag (4G/5G/LTE/WIFI) + biến thể dòng.
-var hauToDong = []string{"FE", "ULTRA", "PLUS", "LITE", "EDGE"}
+// Hậu tố được phép dính sau mã model trong tên báo giá: mạng (4G/5G/LTE/WIFI) luôn được;
+// biến thể dòng (FE/ULTRA/PLUS/EDGE/LITE) chỉ khi không đòi chặt chẽ.
+var hauToDong = []string{"FE", "ULTRA", "PLUS", "EDGE", "LITE"}
 
-func hauToHopLe(h string) bool {
+func hauToHopLe(h string, chatChe bool) bool {
 	if h == "" || mangTag[h] {
 		return true
+	}
+	if chatChe {
+		return false
 	}
 	for _, x := range hauToDong {
 		if x == h {
@@ -733,10 +748,10 @@ func hauToHopLe(h string) bool {
 	return false
 }
 
-// coModel: tên báo giá có đúng mã model. "A07S" không khớp "A07"; "TabS10FE" vẫn khớp "TABS10"
-// (hậu tố dính liền FE/ULTRA/PLUS/5G được phép); "Tab S10" không khớp model "S10" (phải đủ từ đầu).
-func coModel(tenHang, model string) bool {
-	tg := strings.ReplaceAll(strings.ToUpper(boDau(tenHang)), "+", "PLUS")
+// coModel: tên báo giá có đúng mã model. "A07S" không khớp "A07"; "TabS10FE"/"GalaxyS26FE" khớp
+// "TABS10"/"S26FE"; "Tab S10" không khớp model "S10" (TAB là một phần của model máy tính bảng).
+func coModel(tenHang, model string, chatChe bool) bool {
+	tg := chuanModel(tenHang)
 	model = strings.ReplaceAll(model, "+", "PLUS")
 	for _, m := range reModelHD.FindAllStringSubmatch(tg, -1) {
 		if strings.ReplaceAll(m[1], " ", "") == model {
@@ -746,12 +761,16 @@ func coModel(tenHang, model string) bool {
 	tgLien := strings.ReplaceAll(tg, " ", "")
 	laKyTu := func(c byte) bool { return c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' }
 	for i := strings.Index(tgLien, model); i >= 0; {
-		if i == 0 || !laKyTu(tgLien[i-1]) {
+		j := i
+		for j > 0 && laKyTu(tgLien[j-1]) {
+			j--
+		}
+		if tienToHang[tgLien[j:i]] {
 			k := i + len(model)
 			for k < len(tgLien) && laKyTu(tgLien[k]) {
 				k++
 			}
-			if hauToHopLe(tgLien[i+len(model) : k]) {
+			if hauToHopLe(tgLien[i+len(model):k], chatChe) {
 				return true
 			}
 		}

@@ -141,3 +141,7 @@ def test_tieu_de_telegram_dai():
 def test_dong_hang_sau_tien_to_telegram_va_tieu_de_ngoac():
     cac = doc_van_ban("[13/10/2026 13:15:06] Nick: + A01 (4/64): 1.111k\n[SS] Chưa kích hoạt: giá tốt hôm nay\n+ A02: 1.000k\n")
     assert len(cac) == 2 and cac[1][0] == "Chua kich hoat"
+
+
+def test_tien_to_telegram_ngay_khac():
+    assert len(doc_van_ban("[2026-10-13 13:15] Nick: + A09: 1.000k\n[13.10.2026 13:15:06] Nick: + A08: 1.000k\n")) == 2

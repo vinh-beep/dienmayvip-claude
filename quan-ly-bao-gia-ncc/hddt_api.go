@@ -55,7 +55,7 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		c := kho.LayCauHinh()
 		var ds []*HoaDon
 		for _, khoi := range tachKhoiEmail(vao.VanBan) {
-			if hd := DocEmail(khoi); hd != nil && (hd.NCC == "" || khopNCC(hd, c.LocNCC, "")) {
+			if hd := DocEmail(khoi); hd != nil && (hd.NCC == "" || khopNCC(hd, c.LocNCC, c.MSTNCC)) {
 				ds = append(ds, hd)
 			}
 		}
@@ -100,7 +100,7 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		}
 		var loc []*HoaDon
 		for _, hd := range ds {
-			if hd.NCC == "" || khopNCC(hd, c.LocNCC, "") {
+			if hd.NCC == "" || khopNCC(hd, c.LocNCC, c.MSTNCC) {
 				loc = append(loc, hd)
 			}
 		}
@@ -148,9 +148,6 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 					xmlTho = d.Du
 				}
 			}
-			if xmlDu == nil && xmlTho != nil {
-				xmlDu = xmlTho
-			}
 			if hd == nil || !khopNCC(hd, c.LocNCC, c.MSTNCC) {
 				continue
 			}
@@ -174,6 +171,11 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 			}
 			if p := ghi(xmlDu, duoiXML); p != "" {
 				hd.TepXML = p
+			}
+			if xmlDu == nil && xmlTho != nil { // lưu bản thô để xử lý tay, KHÔNG gán TepXML để còn tải lại được
+				if p := ghi(xmlTho, ".dinh-kem-khong-doc-duoc.xml"); p != "" {
+					hd.Loi = "đính kèm XML không đọc được, đã lưu: " + filepath.Base(p)
+				}
 			}
 			if p := ghi(pdfDu, ".pdf"); p != "" {
 				hd.TepPDF = p

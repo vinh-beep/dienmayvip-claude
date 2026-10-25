@@ -73,7 +73,7 @@ var (
 )
 
 // "[13/10/2026 13:15:06] Nick Nam: " ở đầu dòng export Telegram
-var reTienToTelegram = regexp.MustCompile(`^\s*\[\d{1,2}/\d{1,2}/\d{2,4}[^\]]*\]\s*[^:\n+]{0,60}:\s*`)
+var reTienToTelegram = regexp.MustCompile(`^\s*\[\d{1,4}[./-]\d{1,2}[./-]\d{1,4}[^\]]*\]\s*[^:\n+]{0,60}:\s*`)
 
 var mangTag = map[string]bool{"4G": true, "5G": true, "LTE": true, "WIFI": true, "4G LTE": true}
 

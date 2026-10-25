@@ -122,8 +122,18 @@ func TestDoiChieu(t *testing.T) {
 	if DoiChieu(DongHD{Ten: "Củ sạc 25W"}, "10/09/2026", bg) != nil {
 		t.Error("không có model phải trả nil")
 	}
-	if !coModel("Tab S10FE (8/128)", "TABS10") || coModel("A07S (4/64)", "A07") || !coModel("S26 FE (128)", "S26") || coModel("S26 Ultra", "S2") || coModel("Tab S10 FE (8/128)", "S10") || !coModel("S26+ (256)", "S26+") {
+	if !coModel("Tab S10FE (8/128)", "TABS10", false) || coModel("A07S (4/64)", "A07", false) || !coModel("S26 FE (128)", "S26", false) || coModel("S26 FE (128)", "S26", true) ||
+		coModel("S26 Ultra", "S2", false) || coModel("Tab S10 FE (8/128)", "S10", false) || !coModel("S26+ (256)", "S26PLUS", true) || !coModel("GalaxyS26FE (128)", "S26FE", true) ||
+		!coModel("A17 + ốp lưng (4/128)", "A17", true) || coModel("S26 Ultra (256)", "S26", true) {
 		t.Error("coModel sai")
+	}
+	// Lượt chặt trước: hoá đơn S26 thường lấy quote S26 dù S26 Ultra gần ngày hơn
+	bg2 := []DongGia{{TenHang: "S26 (256)", Ngay: "01/09/2026", SLMin: 1, DonGia: 1}, {TenHang: "S26 Ultra (256)", Ngay: "10/09/2026", SLMin: 1, DonGia: 2}, {TenHang: "S26+ (256)", Ngay: "10/09/2026", SLMin: 1, DonGia: 3}}
+	if g := DoiChieu(DongHD{Ten: "Galaxy S26 256GB"}, "10/09/2026", bg2); g == nil || g.DonGia != 1 {
+		t.Errorf("S26 khớp nhầm biến thể: %+v", g)
+	}
+	if g := DoiChieu(DongHD{Ten: "Galaxy S26+ 256GB"}, "10/09/2026", bg2); g == nil || g.DonGia != 3 {
+		t.Errorf("S26+ sai: %+v", g)
 	}
 }
 
