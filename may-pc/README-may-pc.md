@@ -4,6 +4,12 @@
 |---|---|---|
 | `giu-may-thuc/` | `Giu-May-Thuc.bat` | Không Sleep khi cắm điện, giữ card mạng, Windows Update không tự khởi động lại 06h–23h. Có tệp khôi phục. |
 | `suc-khoe/` | `Bao-Cao-Suc-Khoe.bat` | Báo cáo CPU, RAM, bộ nhớ cam kết, số tiến trình Claude/node, phiên Remote Control, SQL Server → `ket-qua-PC-SUC-KHOE-<tên máy>-moi-nhat.md` trên Bridge; lặp mỗi 30 phút. Chạy trên **cả PC và máy SQL Server**. Chỉ đọc. |
-| `giu-phien-rc/` | `Giu-Phien-RC.bat` | Khi đăng nhập Windows: tự mở lại tối đa 5 phiên `claude remote-control` theo `thu-muc-phien.txt`; phiên tắt thì 60 giây sau tự mở lại. |
+| `giu-phien-rc/` | `Giu-Phien-RC.bat` | Giữ tối đa 5 phiên `claude remote-control` theo `thu-muc-phien.txt`. Canh gác mỗi 5 phút và khi đăng nhập; mất mạng thì đợi có mạng mới mở; chặn Windows Update tự khởi động lại khi đang đăng nhập; phiên tắt nhanh 3 lần (hết hạn đăng nhập) thì báo lên Bridge + bật hộp thoại. Gỡ: `Go-Giu-Phien-RC.bat`. |
+| `giu-mods/` | `Giu-Mods.bat` | Chép mọi Claude Mod (đang nằm riêng trong từng phiên) vào `~/.claude/mods-co-dinh` và ghi `CLAUDE_CODE_PLUGIN_DIRS` vào `settings.json`, để phiên mở lại vẫn có mod. Gỡ: `Go-Giu-Mods.bat`. |
+| `khoi-dong-lai/` | `Sua-Loi-Khoi-Dong-Lai.bat` · `Khoi-Dong-Lai-An-Toan.bat` | Restart bị treo: đọc nhật ký xem chương trình/dịch vụ nào làm treo lúc tắt máy (ghi lên Bridge) và cho Windows tự kết thúc chương trình treo. Khởi động lại an toàn: đóng Claude/node/WSL trước rồi `shutdown /r /f`. Gỡ: `Go-Khoi-Dong-Lai.bat`. |
+| `tim-loi-rc/` | `Tim-Loi-RC.bat` | Chỉ đọc: tìm tác vụ/sự kiện Windows gây rớt Remote Control quanh 00h/12h, ghi lên Bridge. |
 
 Chưa chạy thử trên Windows thật (Cloud không có Windows). Đọc log/tệp kết quả sau lần chạy đầu.
+
+
+> Cập nhật 17/10/2026: phiên PC (CC-QLVIP) tìm ra gốc máy treo là **cạn heap desktop** (lỗi 0xc0000142, quá nhiều tiến trình console). Trên máy chính KHÔNG dùng `giu-phien-rc/` và `suc-khoe/` (trùng tác vụ DMV đang chạy, thêm tiến trình làm heap cạn nhanh hơn) — phiên PC đã dời chúng sang `_KHONG-DUNG 16-10` trên Bridge. Thứ tự dùng trên máy chính xem `00 DOC TRUOC - thu tu dung.md` trong `Giu-May-Thuc`.
