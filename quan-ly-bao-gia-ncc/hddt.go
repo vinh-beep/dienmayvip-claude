@@ -679,12 +679,17 @@ var reRomHD = regexp.MustCompile(`\b(\d{1,2})\s*G?B?\s*/\s*(\d{2,4})\s*G?B?\b|\b
 // skuSangModel: mã SKU Samsung → tên model bán hàng. A076/A176/A566 → A07/A17/A56 (chữ + 2 số đầu);
 // máy tính bảng/phụ kiện theo bảng tra.
 var skuBang = map[string]string{"X133": "TABA11", "X135": "TABA11", "X730": "TABS11", "X733": "TABS11", "X830": "TABS11", "F966": "ZFOLD7", "F766": "ZFLIP7", "R390": "FIT3", "R410": "BUDSCORE"}
-var reSKUA = regexp.MustCompile(`^A(\d{2})\d$`)
+var reSKUA = regexp.MustCompile(`^A(\d{2})\d[A-Z]?$`)
 
 func skuSangModel(sku string) string {
 	sku = strings.ToUpper(strings.TrimSpace(sku))
 	if m, ok := skuBang[sku]; ok {
 		return m
+	}
+	if n := len(sku); n == 5 && sku[n-1] >= 'A' && sku[n-1] <= 'Z' { // X133B → X133
+		if m, ok := skuBang[sku[:n-1]]; ok {
+			return m
+		}
 	}
 	if m := reSKUA.FindStringSubmatch(sku); m != nil {
 		return "A" + m[1]

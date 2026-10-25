@@ -38,9 +38,12 @@ func MoKho(thuMuc string) (*Kho, error) {
 	if err := json.Unmarshal(b, k); err != nil {
 		return nil, err
 	}
-	c := k.CauHinh
-	if c.EverythingURL == "" && c.LocNCC == "" && c.ThuMucBridge == "" && c.IMAPUser == "" && len(c.ThuMucQuet) == 0 {
-		k.CauHinh = cauHinhMacDinh() // tệp cũ chưa có khối cấu hình; không đụng cấu hình người dùng đã sửa
+	var tham struct {
+		CauHinh json.RawMessage `json:"cauHinh"`
+	}
+	_ = json.Unmarshal(b, &tham)
+	if len(tham.CauHinh) == 0 || string(tham.CauHinh) == "null" {
+		k.CauHinh = cauHinhMacDinh() // tệp cũ chưa có khối cấu hình; có khối rồi thì giữ nguyên dù thưa
 	}
 	return k, nil
 }

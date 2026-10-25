@@ -252,8 +252,9 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 			if hd.TepPDF != "" || hd.So == "" {
 				continue
 			}
+			khop := taoKhopPDF(hd.So, hd.KyHieu)
 			for _, p := range pdf {
-				if khopTenPDF(filepath.Base(p), hd.So, hd.KyHieu) {
+				if khop(filepath.Base(p)) {
 					hd.TepPDF = p
 					break
 				}
@@ -390,22 +391,31 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 
 var reKyHieuTrongTen = regexp.MustCompile(`\d?[CK]2\d[A-Z]{3}`)
 
-// khopTenPDF: tên tệp chứa số HĐ như một cụm số riêng (cho phép số 0 đệm), và nếu tên có ký hiệu
-// (C26TLH…) thì ký hiệu đó phải trùng ký hiệu hoá đơn.
-func khopTenPDF(tenTep, so, kyHieu string) bool {
+// taoKhopPDF trả về hàm kiểm tên tệp PDF cho một hoá đơn (biên dịch regex một lần cho mỗi hoá đơn):
+// tên tệp (sau khi bỏ cụm ký hiệu) phải chứa số HĐ như một cụm số riêng (cho phép số 0 đệm);
+// nếu tên có ký hiệu và hoá đơn cũng có ký hiệu thì hai bên phải trùng.
+func taoKhopPDF(so, kyHieu string) func(tenTep string) bool {
 	if so == "" {
-		return false
+		return func(string) bool { return false }
 	}
-	ten := strings.ToUpper(tenTep)
 	reSo := regexp.MustCompile(`(^|[^0-9])0*` + regexp.QuoteMeta(so) + `([^0-9]|$)`)
-	if !reSo.MatchString(ten) {
-		return false
+	return func(tenTep string) bool {
+		ten := strings.ToUpper(tenTep)
+		kh := reKyHieuTrongTen.FindString(ten)
+		if kh != "" {
+			ten = strings.Replace(ten, kh, " ", 1) // không cho số HĐ khớp vào chữ số của ký hiệu (C26…)
+		}
+		if !reSo.MatchString(ten) {
+			return false
+		}
+		if kh != "" && kyHieu != "" {
+			return chuanKyHieu(kh) == chuanKyHieu(kyHieu)
+		}
+		return true
 	}
-	if kh := reKyHieuTrongTen.FindString(ten); kh != "" {
-		return chuanKyHieu(kh) == chuanKyHieu(kyHieu)
-	}
-	return true
 }
+
+func khopTenPDF(tenTep, so, kyHieu string) bool { return taoKhopPDF(so, kyHieu)(tenTep) }
 
 // tachKhoiEmail tách văn bản dán nhiều email thành từng thư (cắt tại tiêu đề mỗi thư).
 func tachKhoiEmail(s string) []string {

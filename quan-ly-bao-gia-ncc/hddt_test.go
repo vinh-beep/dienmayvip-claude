@@ -289,12 +289,26 @@ func TestMoKhoGiuCauHinh(t *testing.T) {
 	if k3.LayCauHinh().EverythingURL == "" {
 		t.Error("kho mới phải có cấu hình mặc định")
 	}
+	d4 := t.TempDir() // cấu hình thưa (chỉ MST + mật khẩu) phải được giữ nguyên
+	os.WriteFile(filepath.Join(d4, "bao-gia-ncc.json"), []byte(`{"dong":[],"maCuoi":0,"hoaDon":[],"cauHinh":{"mstNCC":"0101","imapMatKhau":"pw"}}`), 0o644)
+	k4, _ := MoKho(d4)
+	if c := k4.LayCauHinh(); c.MSTNCC != "0101" || c.IMAPMatKhau != "pw" || c.LocNCC != "" {
+		t.Errorf("cấu hình thưa bị thay mặc định: %+v", c)
+	}
+	d5 := t.TempDir() // tệp cũ không có khối cauHinh → mặc định
+	os.WriteFile(filepath.Join(d5, "bao-gia-ncc.json"), []byte(`{"dong":[],"maCuoi":0}`), 0o644)
+	k5, _ := MoKho(d5)
+	if k5.LayCauHinh().LocNCC == "" {
+		t.Error("tệp cũ phải nhận cấu hình mặc định")
+	}
 }
 
 func TestKhopTenPDF(t *testing.T) {
 	if !khopTenPDF("1C26MTL_00001972.pdf", "1972", "C26MTL") || khopTenPDF("1C26MTL_00001972.pdf", "1972", "C26TLH") ||
 		khopTenPDF("HoaDon_1C26TLH_00001234.pdf", "12", "C26TXX") || khopTenPDF("Hoa don 2126.pdf", "12", "") ||
-		!khopTenPDF("Hoa don 12.pdf", "12", "C26TXX") || !khopTenPDF("C26TKV-1158.pdf", "1158", "C26TKV") {
+		!khopTenPDF("Hoa don 12.pdf", "12", "C26TXX") || !khopTenPDF("C26TKV-1158.pdf", "1158", "C26TKV") ||
+		khopTenPDF("1C26MTL_00001972.pdf", "26", "C26MTL") || khopTenPDF("1C26MTL_00001972.pdf", "1", "C26MTL") ||
+		!khopTenPDF("1C26MTL_00001972.pdf", "1972", "") {
 		t.Error("khopTenPDF sai")
 	}
 }
@@ -308,7 +322,7 @@ func TestDoiChieuSKU(t *testing.T) {
 	if g := DoiChieu(DongHD{Ten: "Máy tính bảng Samsung Galaxy Tab A11 WiFi 4GB/64GB"}, "13/10/2026", bg); g == nil || g.DonGia != 6 {
 		t.Errorf("Tab A11 không khớp X133: %+v", g)
 	}
-	if skuSangModel("A176") != "A17" || skuSangModel("X135") != "TABA11" || skuSangModel("S26") != "" {
+	if skuSangModel("A176") != "A17" || skuSangModel("A176B") != "A17" || skuSangModel("X135") != "TABA11" || skuSangModel("X133B") != "TABA11" || skuSangModel("S26") != "" {
 		t.Error("skuSangModel sai")
 	}
 }
