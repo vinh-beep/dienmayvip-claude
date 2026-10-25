@@ -1,0 +1,14 @@
+{
+  "thu_muc_trang_thai": "C:\\ClaudeVIP\\harness2\\trang-thai",
+  "thu_muc_bridge": "C:\\DMV-Cloud-Bridge",
+  "cua_so_gio": 12,
+  "kiem_quyen": {
+    "gmail": ["python", "C:\\ClaudeVIP\\kiem-quyen-gmail.py"],
+    "sql": ["python", "C:\\ClaudeVIP\\kiem-ket-noi-sql.py"]
+  },
+  "viec": [
+    {"ten": "M1-ton-kho", "lich": ["06:00", "13:00"], "lenh": ["python", "C:\\ClaudeVIP\\m1_ton_kho.py"], "can_quyen": ["sql"], "can_ram_mb": 500, "gioi_han_giay": 1800},
+    {"ten": "ban-tin-email", "lich": ["08:00"], "lenh": ["python", "C:\\ClaudeVIP\\ban_tin_email.py"], "can_quyen": ["gmail"]},
+    {"ten": "LENH-BANK-ALL", "lich": ["07:00"], "nhom": "tien", "lenh": ["KHONG-TU-CHAY"]}
+  ]
+}
