@@ -253,8 +253,7 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 				continue
 			}
 			for _, p := range pdf {
-				ten := strings.ToUpper(filepath.Base(p))
-				if strings.Contains(ten, hd.So) && (hd.KyHieu == "" || strings.Contains(ten, strings.ToUpper(hd.KyHieu)) || !strings.Contains(ten, "C2")) {
+				if khopTenPDF(filepath.Base(p), hd.So, hd.KyHieu) {
 					hd.TepPDF = p
 					break
 				}
@@ -344,7 +343,15 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 			loi(w, errors.New("không thấy"))
 			return
 		}
-		duong := map[string]string{"pdf": hd.TepPDF, "xml": hd.TepXML, "thu-muc": filepath.Dir(hd.TepXML + hd.TepPDF)}[r.URL.Query().Get("loai")]
+		tep := hd.TepXML
+		if tep == "" {
+			tep = hd.TepPDF
+		}
+		thuMuc := ""
+		if tep != "" {
+			thuMuc = filepath.Dir(tep)
+		}
+		duong := map[string]string{"pdf": hd.TepPDF, "xml": hd.TepXML, "thu-muc": thuMuc}[r.URL.Query().Get("loai")]
 		if duong == "" || duong == "." {
 			loi(w, errors.New("chưa có tệp"))
 			return
@@ -379,6 +386,25 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		}
 		cw.Flush()
 	})
+}
+
+var reKyHieuTrongTen = regexp.MustCompile(`\d?[CK]2\d[A-Z]{3}`)
+
+// khopTenPDF: tên tệp chứa số HĐ như một cụm số riêng (cho phép số 0 đệm), và nếu tên có ký hiệu
+// (C26TLH…) thì ký hiệu đó phải trùng ký hiệu hoá đơn.
+func khopTenPDF(tenTep, so, kyHieu string) bool {
+	if so == "" {
+		return false
+	}
+	ten := strings.ToUpper(tenTep)
+	reSo := regexp.MustCompile(`(^|[^0-9])0*` + regexp.QuoteMeta(so) + `([^0-9]|$)`)
+	if !reSo.MatchString(ten) {
+		return false
+	}
+	if kh := reKyHieuTrongTen.FindString(ten); kh != "" {
+		return chuanKyHieu(kh) == chuanKyHieu(kyHieu)
+	}
+	return true
 }
 
 // tachKhoiEmail tách văn bản dán nhiều email thành từng thư (cắt tại tiêu đề mỗi thư).

@@ -263,3 +263,52 @@ func TestDocThuCoTieuDe(t *testing.T) {
 		t.Errorf("thiếu tiêu đề: %q", th.Text)
 	}
 }
+
+func TestSoTienDauNghinVaThapPhan(t *testing.T) {
+	cases := map[string]int64{"1,234,567.00": 1234567, "1.234.567,00": 1234567, "1.234.567": 1234567, "3190000": 3190000, "900000.00": 900000, "12,5": 12, "": 0}
+	for in, want := range cases {
+		if got := soTien(in); got != want {
+			t.Errorf("soTien(%q)=%d, muốn %d", in, got, want)
+		}
+	}
+}
+
+func TestMoKhoGiuCauHinh(t *testing.T) {
+	d := t.TempDir()
+	k, _ := MoKho(d)
+	c := k.LayCauHinh()
+	c.EverythingURL, c.IMAPMatKhau, c.LocNCC = "", "bi-mat", "TCT"
+	if err := k.LuuCauHinh(c); err != nil {
+		t.Fatal(err)
+	}
+	k2, err := MoKho(d)
+	if err != nil || k2.LayCauHinh().IMAPMatKhau != "bi-mat" || k2.LayCauHinh().LocNCC != "TCT" {
+		t.Errorf("cấu hình bị xoá khi EverythingURL trống: %+v", k2.LayCauHinh())
+	}
+	k3, _ := MoKho(t.TempDir())
+	if k3.LayCauHinh().EverythingURL == "" {
+		t.Error("kho mới phải có cấu hình mặc định")
+	}
+}
+
+func TestKhopTenPDF(t *testing.T) {
+	if !khopTenPDF("1C26MTL_00001972.pdf", "1972", "C26MTL") || khopTenPDF("1C26MTL_00001972.pdf", "1972", "C26TLH") ||
+		khopTenPDF("HoaDon_1C26TLH_00001234.pdf", "12", "C26TXX") || khopTenPDF("Hoa don 2126.pdf", "12", "") ||
+		!khopTenPDF("Hoa don 12.pdf", "12", "C26TXX") || !khopTenPDF("C26TKV-1158.pdf", "1158", "C26TKV") {
+		t.Error("khopTenPDF sai")
+	}
+}
+
+func TestDoiChieuSKU(t *testing.T) {
+	bg := []DongGia{{TenHang: "A076 (4/128)", Model: "A076", CauHinh: "4/128", Ngay: "13/10/2026", SLMin: 1, DonGia: 5},
+		{TenHang: "Tab A11 Wifi (4/64)", Model: "X133", CauHinh: "4/64", Ngay: "13/10/2026", SLMin: 1, DonGia: 6}}
+	if g := DoiChieu(DongHD{Ten: "Điện thoại Samsung Galaxy A07 4GB/128GB"}, "13/10/2026", bg); g == nil || g.DonGia != 5 {
+		t.Errorf("A07 không khớp SKU A076: %+v", g)
+	}
+	if g := DoiChieu(DongHD{Ten: "Máy tính bảng Samsung Galaxy Tab A11 WiFi 4GB/64GB"}, "13/10/2026", bg); g == nil || g.DonGia != 6 {
+		t.Errorf("Tab A11 không khớp X133: %+v", g)
+	}
+	if skuSangModel("A176") != "A17" || skuSangModel("X135") != "TABA11" || skuSangModel("S26") != "" {
+		t.Error("skuSangModel sai")
+	}
+}

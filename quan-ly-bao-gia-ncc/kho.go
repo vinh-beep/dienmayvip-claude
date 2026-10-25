@@ -38,8 +38,9 @@ func MoKho(thuMuc string) (*Kho, error) {
 	if err := json.Unmarshal(b, k); err != nil {
 		return nil, err
 	}
-	if k.CauHinh.EverythingURL == "" {
-		k.CauHinh = cauHinhMacDinh()
+	c := k.CauHinh
+	if c.EverythingURL == "" && c.LocNCC == "" && c.ThuMucBridge == "" && c.IMAPUser == "" && len(c.ThuMucQuet) == 0 {
+		k.CauHinh = cauHinhMacDinh() // tệp cũ chưa có khối cấu hình; không đụng cấu hình người dùng đã sửa
 	}
 	return k, nil
 }

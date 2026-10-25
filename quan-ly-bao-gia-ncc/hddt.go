@@ -285,8 +285,8 @@ func soTien(s string) int64 {
 	if s == "" {
 		return 0
 	}
-	if i := strings.IndexAny(s, ".,"); i >= 0 && len(s)-i-1 <= 2 && !strings.ContainsAny(s[i+1:], ".,") {
-		s = s[:i] // bỏ phần thập phân .00
+	if i := strings.LastIndexAny(s, ".,"); i >= 0 && len(s)-i-1 >= 1 && len(s)-i-1 <= 2 {
+		s = s[:i] // dấu cuối theo sau 1–2 chữ số = phần thập phân (.00 / ,5), kể cả khi trước đó có dấu nghìn
 	}
 	s = strings.NewReplacer(".", "", ",", "", " ", "").Replace(s)
 	n, _ := strconv.ParseInt(s, 10, 64)
@@ -676,6 +676,22 @@ var tienToHang = map[string]bool{"": true, "GALAXY": true, "SAMSUNG": true, "SAM
 var reSKU = regexp.MustCompile(`^[XFRLTA]\d{3}[A-Z]?$`)
 var reRomHD = regexp.MustCompile(`\b(\d{1,2})\s*G?B?\s*/\s*(\d{2,4})\s*G?B?\b|\b(64|128|256|512|1024)\s*GB?\b`)
 
+// skuSangModel: mã SKU Samsung → tên model bán hàng. A076/A176/A566 → A07/A17/A56 (chữ + 2 số đầu);
+// máy tính bảng/phụ kiện theo bảng tra.
+var skuBang = map[string]string{"X133": "TABA11", "X135": "TABA11", "X730": "TABS11", "X733": "TABS11", "X830": "TABS11", "F966": "ZFOLD7", "F766": "ZFLIP7", "R390": "FIT3", "R410": "BUDSCORE"}
+var reSKUA = regexp.MustCompile(`^A(\d{2})\d$`)
+
+func skuSangModel(sku string) string {
+	sku = strings.ToUpper(strings.TrimSpace(sku))
+	if m, ok := skuBang[sku]; ok {
+		return m
+	}
+	if m := reSKUA.FindStringSubmatch(sku); m != nil {
+		return "A" + m[1]
+	}
+	return ""
+}
+
 // chuanModel: chữ hoa, bỏ dấu, "S26+" → "S26PLUS".
 func chuanModel(ten string) string {
 	return rePlusSauModel.ReplaceAllString(strings.ToUpper(boDau(ten)), "${1}PLUS")
@@ -711,7 +727,7 @@ func DoiChieu(d DongHD, ngayHD string, baoGia []DongGia) *DongGia {
 				if g.SLMin != 1 {
 					continue
 				}
-				if !strings.EqualFold(g.Model, model) && !coModel(g.TenHang, model, chatChe) {
+				if !strings.EqualFold(g.Model, model) && skuSangModel(g.Model) != model && !coModel(g.TenHang, model, chatChe) {
 					continue
 				}
 				if rom != "" && g.CauHinh != "" && g.CauHinh != rom && !strings.HasSuffix(g.CauHinh, "/"+rom) && !strings.HasSuffix(rom, "/"+g.CauHinh) {
@@ -754,7 +770,8 @@ func coModel(tenHang, model string, chatChe bool) bool {
 	tg := chuanModel(tenHang)
 	model = strings.ReplaceAll(model, "+", "PLUS")
 	for _, m := range reModelHD.FindAllStringSubmatch(tg, -1) {
-		if strings.ReplaceAll(m[1], " ", "") == model {
+		tok := strings.ReplaceAll(m[1], " ", "")
+		if tok == model || skuSangModel(tok) == model {
 			return true
 		}
 	}
