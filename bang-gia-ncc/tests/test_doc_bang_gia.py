@@ -130,3 +130,9 @@ def test_ghi_chu_khong_doi_khoi():
 
 def test_bom_dau_tep():
     assert tach_dong("\ufeff+ A01 (4/64): 1.111k") is not None
+    assert len(doc_van_ban("\ufeff+ A01 (4/64): 1.111k\n")) == 1
+
+
+def test_tieu_de_telegram_dai():
+    cac = doc_van_ban("[13/10/2026 13:15:06] Công Ty TNHH Thương Mại Dịch Vụ ABC XYZ Thật Dài: Tồn SS *Hàng Kích Hoạt Ngày 13/10/2026*\n+ A01: 1.000k\n")
+    assert [l for l, _ in cac] == ["Da kich hoat"]

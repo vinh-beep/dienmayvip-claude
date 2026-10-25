@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -127,20 +128,24 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 		for _, t := range thu {
 			hd := DocEmail(t.Text)
 			var xmlDu, pdfDu []byte
-			for _, d := range t.DinhKem {
-				switch strings.ToLower(filepath.Ext(d.Ten)) {
-				case ".pdf":
-					pdfDu = d.Du
-				default:
-					xmlDu = d.Du
-				}
-			}
-			if xmlDu != nil { // XML đính kèm là nguồn chính xác nhất: đọc trước khi lọc/đặt tên
-				if hd == nil {
-					hd = &HoaDon{TrangThai: "moi"}
-				}
-				if err := DocXMLHoaDon(xmlDu, hd); err != nil && hd.So == "" {
+			for _, d := range t.DinhKem { // thử từng đính kèm XML/ZIP, lấy cái đầu tiên đọc được
+				if strings.HasSuffix(strings.ToLower(d.Ten), ".pdf") {
+					if pdfDu == nil {
+						pdfDu = d.Du
+					}
 					continue
+				}
+				if xmlDu != nil {
+					continue
+				}
+				thu := &HoaDon{TrangThai: "moi"}
+				if DocXMLHoaDon(d.Du, thu) == nil {
+					if hd == nil {
+						hd = thu
+					} else {
+						_ = DocXMLHoaDon(d.Du, hd) // XML là nguồn chính xác nhất
+					}
+					xmlDu = d.Du
 				}
 			}
 			if hd == nil || !khopNCC(hd, c.LocNCC, c.MSTNCC) {
@@ -160,7 +165,11 @@ func dangKyHDDT(mux *http.ServeMux, kho *Kho, thuMucDuLieu string) {
 				dinhKem++
 				return p
 			}
-			if p := ghi(xmlDu, ".xml"); p != "" {
+			duoiXML := ".xml"
+			if bytes.HasPrefix(xmlDu, []byte("PK")) {
+				duoiXML = ".zip"
+			}
+			if p := ghi(xmlDu, duoiXML); p != "" {
 				hd.TepXML = p
 			}
 			if p := ghi(pdfDu, ".pdf"); p != "" {

@@ -48,7 +48,7 @@ var mauChuan = []struct {
 
 func laMau(tuGoc, khoa string, coDau []string) bool {
 	t := strings.ToLower(strings.TrimSpace(tuGoc))
-	if t == khoa && boDau(t) == t { // viết không dấu hoàn toàn
+	if t == khoa { // khoá luôn không dấu → từ gốc cũng không dấu
 		return true
 	}
 	for _, d := range coDau {
@@ -71,6 +71,9 @@ var (
 	reTachGC  = regexp.MustCompile(`[-.;:()]`)
 	reDauCau  = regexp.MustCompile(`[().,:;*/-]`)
 )
+
+// "[13/10/2026 13:15:06] Nick Nam: " ở đầu dòng export Telegram
+var reTienToTelegram = regexp.MustCompile(`^\s*\[[^\]]*\]\s*[^:\n]{0,60}:\s*`)
 
 var mangTag = map[string]bool{"4G": true, "5G": true, "LTE": true, "WIFI": true, "4G LTE": true}
 
@@ -136,6 +139,7 @@ func xoaGia(s string) string {
 }
 
 var reTachTu = regexp.MustCompile(`[().,:;*/\-\s]+`)
+var reTokenMau = regexp.MustCompile(`([().,:;*/\-\s]+|[^().,:;*/\-\s]+)`)
 
 // cumMau duyệt các cụm 1–2 từ (gốc, có dấu) và trả về danh sách màu chuẩn; vị trí dùng để xoá khỏi tên.
 func cumMau(chuoi string) []string {
@@ -180,7 +184,7 @@ func timMau(chuoi string) []string { return cumMau(chuoi) }
 // boMau xoá các từ là màu (theo luật laMau) khỏi chuỗi, giữ phần còn lại.
 func boMau(chuoi string) string {
 	var b strings.Builder
-	tu := regexp.MustCompile(`([().,:;*/\-\s]+|[^().,:;*/\-\s]+)`).FindAllString(chuoi, -1)
+	tu := reTokenMau.FindAllString(chuoi, -1)
 	for i := 0; i < len(tu); i++ {
 		t := tu[i]
 		if reTachTu.MatchString(t) {
@@ -221,7 +225,7 @@ func boMau(chuoi string) string {
 
 // TachDong đọc một dòng "+ ..." thành danh sách dòng giá (mỗi bậc SL một dòng).
 func TachDong(dong string) []DongGia {
-	goc := strings.TrimSpace(dong)
+	goc := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(dong), "\uFEFF"))
 	if !strings.HasPrefix(goc, "+") {
 		return nil
 	}
@@ -241,6 +245,7 @@ func TachDong(dong string) []DongGia {
 		dauGia = m[0]
 	}
 	bacs := []bac{{slDau, DocGia(gias[0].chuoi)}}
+	var giaLe []string
 	for i := 1; i < len(gias); i++ {
 		truoc := reSLIt.ReplaceAllString(than[gias[i-1].ket:gias[i].bat], " ") // "SL ít" = sắp hết, không phải bậc
 		if m := reSL.FindStringSubmatch(truoc); m != nil {
@@ -249,6 +254,8 @@ func TachDong(dong string) []DongGia {
 				sl, _ = strconv.Atoi(m[1])
 			}
 			bacs = append(bacs, bac{sl, DocGia(gias[i].chuoi)})
+		} else {
+			giaLe = append(giaLe, gias[i].chuoi)
 		}
 	}
 	phanTen := than[:dauGia]
@@ -304,6 +311,9 @@ func TachDong(dong string) []DongGia {
 			break
 		}
 	}
+	if len(giaLe) > 0 {
+		ghiChu = append(ghiChu, "Gia khac trong dong (khong ro bac): "+strings.Join(giaLe, ", "))
+	}
 
 	tenDu := ten
 	if cauHinh != "" {
@@ -323,11 +333,11 @@ func TachDong(dong string) []DongGia {
 func DocVanBan(vanBan, ncc, ngay string) []DongGia {
 	loai := ""
 	var ket []DongGia
-	for _, dong := range strings.Split(vanBan, "\n") {
+	for _, dong := range strings.Split(strings.TrimPrefix(vanBan, "\uFEFF"), "\n") {
 		thap := strings.ToLower(boDau(dong))
 		if !strings.HasPrefix(strings.TrimSpace(dong), "+") {
-			t := strings.TrimSpace(thap)
-			laTieuDe := len([]rune(t)) <= 80 && !strings.HasPrefix(t, "luu y") && !strings.HasPrefix(t, "chu y") && !strings.HasPrefix(t, "note")
+			t := strings.TrimSpace(reTienToTelegram.ReplaceAllString(thap, ""))
+			laTieuDe := !strings.HasPrefix(t, "luu y") && !strings.HasPrefix(t, "chu y") && !strings.HasPrefix(t, "note") && !strings.HasPrefix(t, "ghi chu") && len(timGia(t)) == 0
 			if laTieuDe && strings.Contains(t, "chua kich") {
 				loai = ChuaKich
 			} else if laTieuDe && (strings.Contains(t, "kich hoat") || strings.Contains(t, "da kich")) {

@@ -433,7 +433,7 @@ func TaiHoaDon(hd *HoaDon, thuMuc string) error {
 		b, ct, err := taiTep(hd.LinkXML)
 		if err != nil {
 			loi = append(loi, "XML: "+err.Error())
-		} else if (strings.Contains(strings.ToLower(ct), "text/html") || bytes.Contains(bytes.ToLower(b[:min(len(b), 600)]), []byte("<html"))) && !bytes.Contains(b, []byte("<HDon")) && !bytes.Contains(b[:min(len(b), 600)], []byte("<?xml")) {
+		} else if (strings.Contains(strings.ToLower(ct), "text/html") || bytes.Contains(bytes.ToLower(b[:min(len(b), 600)]), []byte("<html"))) && !bytes.Contains(b, []byte("<HDon")) && !(bytes.Contains(b[:min(len(b), 600)], []byte("<?xml")) && !bytes.Contains(bytes.ToLower(b[:min(len(b), 2000)]), []byte("<html"))) {
 			loi = append(loi, "XML: máy chủ trả về trang web (mở link Tra cứu, nhập mã rồi tải thủ công vào thư mục quét)")
 		} else {
 			duoi := ".xml"
@@ -592,15 +592,15 @@ func DocTepHoaDon(duong, locNCC, mst string) (*HoaDon, error) {
 	return hd, nil
 }
 
-// khopNCC: locNCC là danh sách tên (không dấu) cách nhau dấu phẩy; mst là danh sách MST cách nhau dấu phẩy.
+// khopNCC: nhận nếu MST (kể cả chi nhánh MST-001) nằm trong danh sách mst, hoặc tên chứa một tên trong locNCC.
+// locNCC/mst là danh sách cách nhau dấu phẩy. Cả hai trống → nhận tất cả.
 func khopNCC(hd *HoaDon, locNCC, mst string) bool {
-	if dsMST := tachDS(mst); len(dsMST) > 0 && hd.MST != "" {
-		for _, m := range dsMST {
-			if hd.MST == m {
+	if hd.MST != "" {
+		for _, m := range tachDS(mst) {
+			if hd.MST == m || strings.HasPrefix(hd.MST, m+"-") { // chi nhánh: MST-001
 				return true
 			}
 		}
-		return false // MST có mà không khớp: từ chối, không xét tên
 	}
 	ds := tachDS(locNCC)
 	if len(ds) == 0 {
@@ -718,12 +718,33 @@ func DoiChieu(d DongHD, ngayHD string, baoGia []DongGia) *DongGia {
 	return nil
 }
 
-// coModel: tên báo giá có đúng mã model (so cả từ, "A07S" không khớp "A07").
+var hauToModel = map[string]bool{"": true, "FE": true, "ULTRA": true, "PLUS": true, "LITE": true, "5G": true, "4G": true, "LTE": true, "WIFI": true}
+
+// coModel: tên báo giá có đúng mã model. "A07S" không khớp "A07"; "TabS10FE" vẫn khớp "TABS10"
+// (hậu tố dính liền FE/ULTRA/PLUS/5G được phép).
 func coModel(tenHang, model string) bool {
-	for _, m := range reModelHD.FindAllStringSubmatch(strings.ToUpper(boDau(tenHang)), -1) {
+	tg := strings.ToUpper(boDau(tenHang))
+	for _, m := range reModelHD.FindAllStringSubmatch(tg, -1) {
 		if strings.ReplaceAll(m[1], " ", "") == model {
 			return true
 		}
+	}
+	tgLien := strings.ReplaceAll(tg, " ", "")
+	for i := strings.Index(tgLien, model); i >= 0; {
+		truoc := i == 0 || !(tgLien[i-1] >= 'A' && tgLien[i-1] <= 'Z' || tgLien[i-1] >= '0' && tgLien[i-1] <= '9')
+		j := i + len(model)
+		k := j
+		for k < len(tgLien) && (tgLien[k] >= 'A' && tgLien[k] <= 'Z' || tgLien[k] >= '0' && tgLien[k] <= '9') {
+			k++
+		}
+		if (truoc || strings.HasPrefix(model, "S") || strings.HasPrefix(model, "TAB")) && hauToModel[tgLien[j:k]] {
+			return true
+		}
+		n := strings.Index(tgLien[i+1:], model)
+		if n < 0 {
+			break
+		}
+		i += 1 + n
 	}
 	return false
 }

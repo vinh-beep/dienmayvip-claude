@@ -122,11 +122,14 @@ func TestDoiChieu(t *testing.T) {
 	if DoiChieu(DongHD{Ten: "Củ sạc 25W"}, "10/09/2026", bg) != nil {
 		t.Error("không có model phải trả nil")
 	}
+	if !coModel("Tab S10FE (8/128)", "TABS10") || coModel("A07S (4/64)", "A07") || !coModel("S26 FE (128)", "S26") || coModel("S26 Ultra", "S2") {
+		t.Error("coModel sai")
+	}
 }
 
 func TestDocNoiDungMail(t *testing.T) {
 	raw := "From: a@b\r\nSubject: x\r\nContent-Type: multipart/alternative; boundary=\"BB\"\r\n\r\n--BB\r\nContent-Type: text/html; charset=utf-8\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n<p>S=E1=BB=91 h=C3=B3a =C4=91=C6=A1n: 77 <a href=3D\"https://einvoice.fast.com.vn/index.aspx?type=3D2&amp;c=3DK&amp;hash=3DH\">t=E1=BA=A3i</a></p>\r\n--BB--\r\n"
-	txt := DocNoiDungMail(raw)
+	txt := DocThu(raw).Text
 	if !containsAll(txt, "Số hóa đơn: 77", "https://einvoice.fast.com.vn/index.aspx?type=2&c=K&hash=H") {
 		t.Errorf("đọc MIME sai: %q", txt)
 	}
@@ -203,9 +206,9 @@ func TestDocEmailMISA(t *testing.T) {
 		t.Errorf("tên người bán fallback sai: %+v", hd)
 	}
 	// MST có thẩm quyền: khớp tên nhưng MST khác → từ chối
-	x := &HoaDon{NCC: "CÔNG TY TCT", MST: "999"}
-	if khopNCC(x, "TCT", "111") || !khopNCC(x, "TCT", "111, 999") || !khopNCC(&HoaDon{NCC: "CÔNG TY TCT"}, "TCT", "111") {
-		t.Error("khopNCC theo MST sai")
+	x := &HoaDon{NCC: "CÔNG TY KHÁC", MST: "999-001"}
+	if khopNCC(x, "TCT", "111") || !khopNCC(x, "TCT", "111, 999") || !khopNCC(&HoaDon{NCC: "CÔNG TY TCT", MST: "555"}, "TCT", "111") {
+		t.Error("khopNCC theo MST/tên sai")
 	}
 	if ms, kh := tachKyHieu("1C26TLH"); ms != "1" || kh != "C26TLH" {
 		t.Error("tachKyHieu sai")

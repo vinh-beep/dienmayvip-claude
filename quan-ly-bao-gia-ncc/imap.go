@@ -235,9 +235,6 @@ func tenDinhKem(ct, cd string) string {
 	return ""
 }
 
-// DocNoiDungMail rút text từ thư MIME thô (bọc DocThu).
-func DocNoiDungMail(raw string) string { return DocThu(raw).Text }
-
 var reThe = regexp.MustCompile(`(?s)<[^>]+>`)
 var reHref = regexp.MustCompile(`(?is)<a[^>]*href="([^"]+)"[^>]*>`)
 

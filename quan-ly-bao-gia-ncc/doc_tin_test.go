@@ -2,7 +2,10 @@ package main
 
 // Mọi con số trong kiểm thử là GIẢ, không phải giá NCC thật.
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestDocGia(t *testing.T) {
 	cases := map[string]int64{"1.234k": 1234000, "12.345": 12345000, "555k": 555000, "1.020k": 1020000}
@@ -101,5 +104,17 @@ func TestGhiChuKhongDoiKhoi(t *testing.T) {
 	ds := DocVanBan("Chưa kích\n+ A01: 1.000k\nLưu ý: máy đã kích hoạt không đổi trả\n+ A02: 1.000k\n", "N", "01/01/2026")
 	if len(ds) != 2 || ds[1].LoaiHang != ChuaKich {
 		t.Errorf("khối bị đổi bởi ghi chú: %+v", ds)
+	}
+}
+
+func TestTieuDeTelegramDaiVaBOM(t *testing.T) {
+	tin := "\uFEFF[13/10/2026 13:15:06] Công Ty TNHH Thương Mại Dịch Vụ ABC XYZ Thật Dài: Tồn SS *Hàng Kích Hoạt Ngày 13/10/2026*\n+ A01: 1.000k\n"
+	ds := DocVanBan(tin, "N", "01/01/2026")
+	if len(ds) != 1 || ds[0].LoaiHang != DaKich {
+		t.Errorf("tiêu đề dài/BOM sai: %+v", ds)
+	}
+	ds2 := TachDong("+ A01 (4/64): 1.111k- 10c: 1.100k")
+	if len(ds2) != 1 || !strings.Contains(ds2[0].GhiChu, "1.100k") {
+		t.Errorf("giá lẻ không rõ bậc bị mất: %+v", ds2)
 	}
 }

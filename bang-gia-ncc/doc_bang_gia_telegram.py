@@ -41,7 +41,7 @@ TACH_TU = re.compile(r"([().,:;*/\-\s]+)")
 
 def la_mau(tu_goc: str, khoa: str, co_dau) -> bool:
     t = tu_goc.strip().lower()
-    return (t == khoa and bo_dau(t) == t) or t in co_dau
+    return t == khoa or t in co_dau  # khoá luôn không dấu
 
 
 def _duyet_mau(chuoi: str, xoa: bool):
@@ -78,6 +78,7 @@ ROM = r"(32|64|126|128|256|512|1024)"
 RAM_ROM_RE = re.compile(r"\(?\s*(2|3|4|6|8|12|16)\s*G?B?\s*/\s*" + ROM + r"\s*G?B?\s*\)?", re.IGNORECASE)
 ROM_RE = re.compile(r"(?:\(\s*" + ROM + r"\s*\)|\b" + ROM + r"\s*G\b|\b" + ROM + r"\b)", re.IGNORECASE)
 MA_RE = re.compile(r"\b([A-Z]\d{3}[A-Z]?)\b")
+TIEN_TO_TELEGRAM_RE = re.compile(r"^\s*\[[^\]]*\]\s*[^:\n]{0,60}:\s*")  # "[13/10/2026 13:15:06] Nick Nam: "
 MANG = {"4G", "5G", "LTE", "WIFI", "4G LTE"}
 
 
@@ -183,11 +184,11 @@ def doc_van_ban(van_ban: str) -> list[tuple[str, DongHang]]:
     """Trả về [(LoaiHang, DongHang)] theo khối 'Chưa kích' / 'Đã kích'."""
     loai = "Chua ro"
     ket = []
-    for dong in van_ban.splitlines():
+    for dong in van_ban.lstrip("\ufeff").splitlines():
         thap = bo_dau(dong).lower()
         if not dong.strip().startswith("+"):
-            t = thap.strip()
-            la_tieu_de = len(t) <= 80 and not t.startswith(("luu y", "chu y", "note"))
+            t = TIEN_TO_TELEGRAM_RE.sub("", thap).strip()
+            la_tieu_de = not t.startswith(("luu y", "chu y", "note", "ghi chu")) and not GIA_RE.search(t)
             if la_tieu_de and "chua kich" in t:
                 loai = "Chua kich hoat"
             elif la_tieu_de and ("kich hoat" in t or "da kich" in t):
