@@ -27,9 +27,10 @@ func MoKho(thuMuc string) (*Kho, error) {
 	if err := os.MkdirAll(filepath.Join(thuMuc, "sao-luu"), 0o755); err != nil {
 		return nil, err
 	}
-	k := &Kho{duong: filepath.Join(thuMuc, "bao-gia-ncc.json"), CauHinh: cauHinhMacDinh()}
+	k := &Kho{duong: filepath.Join(thuMuc, "bao-gia-ncc.json")}
 	b, err := os.ReadFile(k.duong)
 	if errors.Is(err, os.ErrNotExist) {
+		k.CauHinh = cauHinhMacDinh()
 		return k, nil
 	}
 	if err != nil {
