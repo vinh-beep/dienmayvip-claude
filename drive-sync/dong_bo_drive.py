@@ -219,14 +219,14 @@ def chay_dong_bo(
                 log_file = log_dir / f"rclone-{item['dich']}-{stamp}.log"
                 cmd = build_rclone_cmd(cfg, str(src), item["dich"], list_file, log_file, chay_that=chay_that)
                 try:
-                    proc = runner(cmd, capture_output=True, text=True, timeout=3600)
+                    proc = runner(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=3600)
                     entry["rclone_ma"] = proc.returncode
                     if proc.returncode != 0:
                         status["loi"].append(f"rclone '{item['dich']}' mã {proc.returncode}")
                     elif chay_that and cfg["xac_minh"]:
                         check_log = log_dir / f"check-{item['dich']}-{stamp}.log"
                         check = runner(build_rclone_check_cmd(cfg, str(src), item["dich"], list_file, check_log),
-                                       capture_output=True, text=True, timeout=3600)
+                                       capture_output=True, encoding="utf-8", errors="replace", timeout=3600)
                         entry["xac_minh"] = "dat" if check.returncode == 0 else "hong"
                         if check.returncode != 0:
                             status["loi"].append(
@@ -253,7 +253,7 @@ def chay_dong_bo(
         if chay_that and status["ket_qua"] == "ok":
             try:  # file trạng thái nhỏ để Claude/Chuông đọc nhanh
                 runner([cfg["rclone"], "copyto", str(status_path), f"{cfg['remote']}{STATUS_NAME}"],
-                       capture_output=True, text=True, timeout=300)
+                       capture_output=True, encoding="utf-8", errors="replace", timeout=300)
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 pass
     return status
@@ -325,7 +325,7 @@ def kiem_cau_hinh(cfg: dict[str, Any], *, day_du: bool, runner: Callable[..., An
         for label, cmd in (("rclone chạy được", [cfg["rclone"], "version"]),
                            ("remote đọc được", [cfg["rclone"], "lsf", cfg["remote"], "--max-depth", "1", "--dirs-only"])):
             try:
-                rc = runner(cmd, capture_output=True, text=True, timeout=120).returncode
+                rc = runner(cmd, capture_output=True, encoding="utf-8", errors="replace", timeout=120).returncode
                 out.append((rc == 0, f"{label}: {'ok' if rc == 0 else f'mã {rc}'}"))
             except FileNotFoundError:
                 out.append((False, f"{label}: không tìm thấy rclone"))
@@ -334,7 +334,17 @@ def kiem_cau_hinh(cfg: dict[str, Any], *, day_du: bool, runner: Callable[..., An
     return out
 
 
+def _utf8_console() -> None:
+    """Console Windows hay là cp1252/cp437: in tiếng Việt sẽ sập UnicodeEncodeError. Ép UTF-8, ký tự lạ thành '?'."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _utf8_console()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", required=True)
     ap.add_argument("--chay-that", action="store_true", help="ghi lên Drive (mặc định chỉ chạy thử)")

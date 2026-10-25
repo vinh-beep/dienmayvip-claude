@@ -9,6 +9,7 @@ Bộ kiểm tốt phải ĐỎ. Đột biến nào bộ kiểm vẫn xanh = lỗ
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -39,9 +40,10 @@ MUTATIONS: list[tuple[str, str, str, str, str]] = [
 
 
 def run_pytest(cwd: Path) -> tuple[int, str]:
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     proc = subprocess.run(
         [sys.executable, "-I", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider"],
-        cwd=cwd, capture_output=True, text=True, timeout=600,
+        cwd=cwd, capture_output=True, encoding="utf-8", errors="replace", timeout=600, env=env,
     )
     tail = (proc.stdout.strip().splitlines() or [proc.stderr.strip()[-200:]])[-1]
     return proc.returncode, tail
@@ -84,4 +86,9 @@ def tu_kiem() -> int:
 
 
 if __name__ == "__main__":
+    for _s in (sys.stdout, sys.stderr):  # console Windows cp1252 không in được tiếng Việt
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
     sys.exit(tu_kiem() if "--tu-kiem" in sys.argv[1:] else chay_bo_kiem())

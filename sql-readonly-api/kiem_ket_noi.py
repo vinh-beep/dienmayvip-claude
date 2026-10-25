@@ -56,7 +56,17 @@ def kiem_day_du(views: dict[str, api.ViewSpec], backend: Any) -> list[Result]:
     return out
 
 
+def _utf8_console() -> None:
+    """Console Windows hay là cp1252/cp437: in tiếng Việt sẽ sập UnicodeEncodeError. Ép UTF-8, ký tự lạ thành '?'."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _utf8_console()
     argv = sys.argv[1:] if argv is None else argv
     nhe = "--nhe" in argv
     api.load_env_file(api.HERE / "config.env")

@@ -99,3 +99,13 @@ def test_view_rong_van_dat_nhung_ghi_chu():
     b.conn.execute("DELETE FROM vw_API_TonGiaBan")
     res = kk.kiem_day_du(make_views(), b)
     assert all(ok for ok, _ in res) and any("đang rỗng" in m for _, m in res)
+
+
+def test_cli_khong_sap_khi_console_la_cp1252(tmp_path):
+    import os
+    import subprocess
+    env = {k: v for k, v in os.environ.items() if not k.startswith("DMV_")}
+    env.update(PYTHONIOENCODING="cp1252", DMV_VIEWS_FILE=str(tmp_path / "khong-co.json"))
+    proc = subprocess.run([sys.executable, str(Path(kk.__file__)), "--nhe"], capture_output=True, env=env, timeout=60)
+    assert b"Traceback" not in proc.stderr, proc.stderr.decode("utf-8", "replace")
+    assert proc.returncode == 1 and "HỎNG".encode("utf-8") in proc.stdout

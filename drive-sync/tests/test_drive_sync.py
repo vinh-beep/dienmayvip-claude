@@ -468,3 +468,17 @@ def test_kiem_bao_hong_khi_thieu_thu_muc_hoac_rclone(tmp_path):
     res = db.kiem_cau_hinh(cfg, day_du=True, runner=FakeRunner(exc=FileNotFoundError()))
     msgs = [m for ok, m in res if not ok]
     assert any("KHÔNG THẤY" in m for m in msgs) and any("không tìm thấy rclone" in m for m in msgs)
+
+
+# ---------------------------------------------------------------- bẫy console Windows (CI Windows 25/10/2026)
+
+
+def test_cli_khong_sap_khi_console_la_cp1252(tmp_path):
+    import subprocess
+    cfgp = cfg_file(tmp_path)
+    (tmp_path / "src").mkdir()
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+    proc = subprocess.run([sys.executable, str(Path(db.__file__)), "--config", str(cfgp), "--kiem-nhe"],
+                          capture_output=True, env=env, timeout=60)
+    assert b"Traceback" not in proc.stderr, proc.stderr.decode("utf-8", "replace")
+    assert proc.returncode == 0 and "Thư mục nguồn".encode("utf-8") in proc.stdout
