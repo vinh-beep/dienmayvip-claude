@@ -46,20 +46,22 @@ MUTATIONS: list[tuple[str, str, str, str, str]] = [
 ]
 
 
-def run_pytest(cwd: Path) -> tuple[int, str]:
+def run_pytest(cwd: Path, *, full: bool = False) -> tuple[int, str]:
     env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     proc = subprocess.run(
         [sys.executable, "-I", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider"],
         cwd=cwd, capture_output=True, encoding="utf-8", errors="replace", timeout=600, env=env,
     )
-    tail = (proc.stdout.strip().splitlines() or [proc.stderr.strip()[-200:]])[-1]
-    return proc.returncode, tail
+    lines = proc.stdout.strip().splitlines() or [proc.stderr.strip()[-200:]]
+    if full and proc.returncode != 0:  # in chi tiết ca đỏ để đọc ngay trong nhật ký CI
+        print("\n".join(lines[-60:]))
+    return proc.returncode, lines[-1]
 
 
 def chay_bo_kiem() -> int:
     bad = 0
     for name in SUITES:
-        rc, tail = run_pytest(ROOT / name)
+        rc, tail = run_pytest(ROOT / name, full=True)
         print(f"{'ĐẠT ' if rc == 0 else 'HỎNG'}  {name:18s} {tail}")
         bad += rc != 0
     return 1 if bad else 0
