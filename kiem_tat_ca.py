@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SUITES = ["sql-readonly-api", "drive-sync", "video-links", "ton-dong"]
+SUITES = ["sql-readonly-api", "drive-sync", "video-links", "ton-dong", "tong-hop-viec", "harness2-app-chuan", "nhac-cat"]
 
 # (thư mục, tệp, đoạn gốc, đoạn thay, ý nghĩa). Đoạn gốc PHẢI xuất hiện đúng 1 lần.
 MUTATIONS: list[tuple[str, str, str, str, str]] = [
@@ -43,6 +43,13 @@ MUTATIONS: list[tuple[str, str, str, str, str]] = [
     ("ton-dong", "ton_dong.py", "elif du_lieu_cu:", "elif False:", "bỏ cảnh báo dữ liệu đã đứng"),
     ("ton-dong", "ton_dong.py", "if cur == ban_san and days >= ngay_dong:", "if days >= ngay_dong:", "bỏ đối chiếu với tồn hiện tại"),
     ("ton-dong", "ton_dong.py", "None if sim or gia is None else c * gia", "None if gia is None else c * gia", "tính giá trị cho SIM"),
+    ("tong-hop-viec", "tong_hop_viec.py", "line = MAU_SDT.sub(\"[che: SĐT]\", line)", "pass", "không che SĐT trong bản tổng hợp"),
+    ("tong-hop-viec", "tong_hop_viec.py", "if MAU_NOI_BO.search(line):", "if False:", "để lọt dòng giá nội bộ vào bản chép"),
+    ("tong-hop-viec", "tong_hop_viec.py", 'm.trang_thai = "treo"', 'm.trang_thai = "dang-lam"', "không phát hiện tin treo"),
+    ("harness2-app-chuan", "kiem_chuan_app.py", 'kq["bi-mat"] = not any(co_bi_mat_gan_cung(t) for t in texts.values())', 'kq["bi-mat"] = True', "bỏ kiểm bí mật gán cứng"),
+    ("harness2-app-chuan", "kiem_chuan_app.py", 'kq["kiem"] = "--kiem" in all_text', 'kq["kiem"] = True', "coi app nào cũng có --kiem"),
+    ("nhac-cat", "kiem_cat_nhac.py", "elif can > dai + 0.01:", "elif False:", "cho cắt vượt độ dài bài"),
+    ("nhac-cat", "kiem_cat_nhac.py", "if len(seen.get(m.get(\"tep\", \"\"), [])) > 1:", "if False:", "cho 1 bài dùng nhiều SP"),
 ]
 
 
