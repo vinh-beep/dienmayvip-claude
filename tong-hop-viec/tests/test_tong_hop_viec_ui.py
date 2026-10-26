@@ -35,6 +35,9 @@ def test_panel_chep_tat_ca_va_muc(root, kho, tmp_path):
     p.list.selection_set(1)
     p.chep_muc()
     assert "==" in root.clipboard_get()
+    assert "✅" not in p.text.get("1.0", "end")  # đang lọc chỉ việc còn mở
+    p.list.selection_clear(0, "end")
+    p.list.selection_set(0)                      # mục "Tất cả"
     p.chi_mo.set(False)
     p.ve_lai()
     assert "✅" in p.text.get("1.0", "end")
