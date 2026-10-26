@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SUITES = ["sql-readonly-api", "drive-sync"]
+SUITES = ["sql-readonly-api", "drive-sync", "video-links", "ton-dong"]
 
 # (thư mục, tệp, đoạn gốc, đoạn thay, ý nghĩa). Đoạn gốc PHẢI xuất hiện đúng 1 lần.
 MUTATIONS: list[tuple[str, str, str, str, str]] = [
@@ -36,6 +36,13 @@ MUTATIONS: list[tuple[str, str, str, str, str]] = [
     ("drive-sync", "dong_bo_drive.py", 'cfg["rclone"], "copy", src,', 'cfg["rclone"], "sync", src,', "đổi copy thành sync (có thể xóa trên Drive)"),
     ("drive-sync", "dong_bo_drive.py", "elif chay_that:\n            status", "else:\n            status", "chạy thử cũng ghi mốc thành công"),
     ("drive-sync", "dong_bo_drive.py", 'elif chay_that and cfg["xac_minh"]:', "elif False:", "bỏ bước đọc lại Drive"),
+    ("video-links", "video_links.py", "return bool(path) and not re.search(r'[\"\\r\\n\\x00]', path)", "return bool(path)",
+     "cho đường dẫn có dấu nháy/xuống dòng vào lệnh explorer"),
+    ("video-links", "video_links.py", 'return text if parsed.scheme in ("http", "https") and parsed.netloc else ""', "return text",
+     "mở cả link javascript:/file:"),
+    ("ton-dong", "ton_dong.py", "elif du_lieu_cu:", "elif False:", "bỏ cảnh báo dữ liệu đã đứng"),
+    ("ton-dong", "ton_dong.py", "if cur == ban_san and days >= ngay_dong:", "if days >= ngay_dong:", "bỏ đối chiếu với tồn hiện tại"),
+    ("ton-dong", "ton_dong.py", "None if sim or gia is None else c * gia", "None if gia is None else c * gia", "tính giá trị cho SIM"),
 ]
 
 

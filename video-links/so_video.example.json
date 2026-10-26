@@ -1,0 +1,9 @@
+{
+  "videos": [
+    {"ma": "A04", "ten": "SAMSUNG A04 3GB 32GB", "url": "https://www.youtube.com/watch?v=EXAMPLE0001", "tep": "D:\\20 Kenh MXH\\A04\\A04 - TikTok YouTube.mp4", "trang_thai": "da-dang"},
+    {"ma": "A04", "ten": "SAMSUNG A04 3GB 32GB", "url": "https://www.tiktok.com/@dienmayvip/video/0000000000000000001", "tep": "D:\\20 Kenh MXH\\A04\\A04 - TikTok YouTube.mp4", "trang_thai": "da-dang"},
+    {"ma": "A06", "ten": "SAMSUNG A06 5G 4GB 128GB", "url": "", "tep": "D:\\20 Kenh MXH\\A06\\A06 - TikTok YouTube.mp4", "trang_thai": "dang-dang", "tien_do": 60, "nen_tang": "youtube"},
+    {"ma": "A07", "ten": "SAMSUNG A07 4GB 64GB", "url": "", "tep": "D:\\20 Kenh MXH\\A07\\A07 - TikTok YouTube.mp4", "trang_thai": "cho-dang", "nen_tang": "tiktok"},
+    {"ma": "A15", "ten": "SAMSUNG A15 8GB 128GB", "url": "", "tep": "", "trang_thai": "loi", "nen_tang": "tiktok"}
+  ]
+}
