@@ -150,7 +150,7 @@ class VideoLinksPanel(ttk.Frame):
 
 def tao_menu(root: tk.Tk, panel: VideoLinksPanel) -> tk.Menu:
     """Thanh menu có mục Mở tệp trong thư mục (Ctrl+O)."""
-    menubar = tk.Menu(root)
+    menubar = tk.Menu(root, tearoff=0)  # tearoff=0: không có mục 'tách rời' chiếm vị trí 0
     tep = tk.Menu(menubar, tearoff=0)
     tep.add_command(label=f"{ICON_THU_MUC} Mở tệp trong thư mục\tCtrl+O", command=panel.mo_thu_muc)
     tep.add_command(label="🌐 Mở link\tCtrl+L", command=panel.mo_link)
