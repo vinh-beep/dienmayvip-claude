@@ -1,0 +1,14 @@
+{
+  "_ghi_chu": "Lỗi đã biết → nguyên nhân → cách chữa. Khoá là chuỗi tìm trong nội dung tin (không phân biệt hoa thường). Thêm mục mới, không xoá mục cũ.",
+  "1073807364": {"nghia": "0x40010004 — tiến trình bị giết (kill)", "chua": "Máy khởi động lại hoặc đăng xuất. Harness² chạy bù (harness2-chay-bu) sẽ chạy lại; xem Event Log 1074/6008 quanh giờ đó."},
+  "267014": {"nghia": "0x41306 — Task Scheduler kết thúc tác vụ (quá giờ hoặc bị dừng)", "chua": "Tăng giới hạn thời gian tác vụ hoặc chia nhỏ; nếu cùng lúc nhiều tác vụ → máy khởi động lại."},
+  "2147943467": {"nghia": "0x8007042B — tác vụ bị huỷ giữa chừng", "chua": "Chạy lại thủ công một lần; nếu lặp → kiểm script có lệnh exit sớm."},
+  "3221225786": {"nghia": "0xC000013A — cửa sổ console bị đóng (Ctrl+C / đóng cửa sổ)", "chua": "Chạy bằng pythonw hoặc CREATE_NO_WINDOW (luật H10), không chạy qua cửa sổ cmd."},
+  "0xc0000142": {"nghia": "Cạn heap desktop — quá nhiều tiến trình console", "chua": "Chạy tuần tự (H10); đóng bớt tiến trình; không bật giu-phien-rc/suc-khoe trên máy chính."},
+  "invalid_grant": {"nghia": "Refresh token OAuth đã bị thu hồi (OAuth app ở chế độ Testing tự chết sau 7 ngày)", "chua": "Google Cloud dienmayvip-b6934 → OAuth consent → Internal; tạm thời: python C:\\ClaudeVIP\\gmail-cap-lai-quyen.py rồi bấm Cho phép."},
+  "disabled claude subscription": {"nghia": "Tổ chức tắt quyền gói Claude cho Claude Code", "chua": "claude.ai → Settings (quản trị tổ chức) → bật lại quyền Claude Code dùng subscription. Dừng mọi lượt mới, không thử lại liên tục (H15)."},
+  "computer_unreachable": {"nghia": "Phiên Remote Control không tới được máy", "chua": "Phiên CLI tự nối lại; phiên Desktop phải gõ /remote-control. Nếu mọi phiên cùng rớt → kiểm điện/modem."},
+  "08001": {"nghia": "ODBC không nối được SQL Server", "chua": "Chuỗi kết nối phải có Encrypt=no;TrustServerCertificate=yes; driver ODBC 17/18; kiểm SQL 192.168.1.200 đã lên chưa."},
+  "email phan loai (ma 2)": {"nghia": "Tác vụ email thoát mã 2 — thường do Gmail chưa cấp lại quyền", "chua": "Cấp lại quyền Gmail (xem invalid_grant), rồi chạy lại tác vụ."},
+  "hop mail vip nap (ma 2)": {"nghia": "Hộp Mail VIP nạp lỗi — Gmail OAuth chết", "chua": "Như invalid_grant; sau đó nạp bù với after:2026/10/22, app chống trùng theo Mã thư."}
+}
