@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Điện Máy VIP — Thông tin sản phẩm</title>
+<style>
+  :root { --nen:#f6f7f9; --the:#fff; --chu:#1b1f24; --phu:#5b6470; --chinh:#c8102e; --xanh:#1a7f37; --vien:#e3e6ea; }
+  @media (prefers-color-scheme: dark) { :root { --nen:#111418; --the:#1b2027; --chu:#eef1f4; --phu:#9aa4b1; --vien:#2c333c; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--nen); color:var(--chu); }
+  main { max-width:480px; margin:0 auto; padding:16px; }
+  .the { background:var(--the); border:1px solid var(--vien); border-radius:12px; padding:16px; margin-bottom:12px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  .gia { font-size:28px; font-weight:700; color:var(--chinh); margin:8px 0; }
+  .phu { color:var(--phu); font-size:14px; }
+  .ok { color:var(--xanh); font-weight:600; }
+  button { width:100%; padding:14px; font-size:17px; font-weight:600; border:0; border-radius:10px; cursor:pointer; }
+  .nut-chinh { background:var(--chinh); color:#fff; }
+  .nut-phu { background:transparent; color:var(--chu); border:1px solid var(--vien); margin-top:8px; }
+  input[type=tel], input[type=text] { width:100%; padding:12px; font-size:16px; border:1px solid var(--vien); border-radius:8px; background:var(--nen); color:var(--chu); margin:6px 0; }
+  label.dong-y { display:flex; gap:8px; font-size:14px; margin:8px 0; }
+  ul { margin:4px 0; padding-left:20px; }
+  .an { display:none; }
+  .bao { padding:10px; border-radius:8px; background:var(--nen); margin-top:8px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="the" id="the-sp">
+    <div class="phu" id="vi-tri">Đang tải…</div>
+    <h1 id="ten"></h1>
+    <div class="gia" id="gia"></div>
+    <div id="ton"></div>
+    <ul id="thong-so"></ul>
+  </div>
+
+  <div class="the" id="the-tu-van">
+    <button class="nut-chinh" id="nut-tu-van">Cần tư vấn tại kệ này</button>
+    <div class="bao an" id="bao-tu-van"></div>
+  </div>
+
+  <div class="the" id="the-dang-ky">
+    <strong id="tieu-de-dk">Nhận tin bảo hành &amp; ưu đãi</strong>
+    <p class="phu">Để lại số điện thoại để cửa hàng nhắc lịch bảo hành và gửi ưu đãi. Không bắt buộc.</p>
+    <input type="tel" id="sdt" inputmode="numeric" placeholder="Số điện thoại (10 số)" maxlength="10">
+    <input type="text" id="imei" inputmode="numeric" placeholder="IMEI máy (nếu có, 15 số)" maxlength="15">
+    <label class="dong-y"><input type="checkbox" id="dong-y">
+      <span>Tôi đồng ý để Điện Máy VIP lưu số điện thoại này để nhắc bảo hành và gửi ưu đãi. Tôi có thể rút lại đồng ý bất cứ lúc nào bằng nút bên dưới.</span></label>
+    <button class="nut-chinh" id="nut-dang-ky">Đăng ký</button>
+    <button class="nut-phu" id="nut-huy">Rút lại đồng ý / ngừng nhận tin</button>
+    <div class="bao an" id="bao-dk"></div>
+  </div>
+  <p class="phu" style="text-align:center"><a id="link-nv" href="/nv" style="color:inherit">Nhân viên</a></p>
+</main>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search);
+  const vt = { sku: q.get("sku") || "", cn: q.get("cn") || "30LL", ke: q.get("ke") || "", nguon: q.get("nguon") || "khac" };
+  const imeiUrl = q.get("imei") || "";
+  const $ = (id) => document.getElementById(id);
+  const vnd = (n) => n.toLocaleString("vi-VN") + " ₫";
+  const gui = (url, body) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+    .then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "Lỗi"); return r.json(); });
+  const bao = (el, text) => { el.textContent = text; el.classList.remove("an"); };
+
+  $("link-nv").href = "/nv" + location.search;
+  if (imeiUrl) $("imei").value = imeiUrl;
+  if (vt.nguon === "bh") { $("the-tu-van").classList.add("an"); $("tieu-de-dk").textContent = "Đăng ký bảo hành điện tử"; }
+
+  if (!vt.sku) { $("vi-tri").textContent = "Mã QR thiếu thông tin sản phẩm."; return; }
+
+  fetch(`/sp/${encodeURIComponent(vt.sku)}?cn=${encodeURIComponent(vt.cn)}`)
+    .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+    .then((sp) => {
+      $("vi-tri").textContent = sp.chi_nhanh + (vt.ke ? " · Kệ " + vt.ke : "");
+      $("ten").textContent = sp.ten;
+      $("gia").textContent = sp.gia_trang_thai === "live" && sp.gia ? vnd(sp.gia) : "Liên hệ nhân viên để báo giá";
+      $("ton").innerHTML = sp.con_hang_tai_day
+        ? '<span class="ok">Còn hàng tại cửa hàng này</span>'
+        : (sp.con_hang_noi_khac.length ? "Đang có tại: " + sp.con_hang_noi_khac.join(", ") : "Tạm hết hàng — nhân viên sẽ báo ngày về");
+      (sp.thong_so || []).slice(0, 6).forEach((t) => { const li = document.createElement("li"); li.textContent = t; $("thong-so").appendChild(li); });
+    })
+    .catch(() => { $("vi-tri").textContent = "Không tải được thông tin. Nhân viên sẽ hỗ trợ anh/chị."; });
+
+  gui("/su-kien", { loai: "quet", ...vt }).catch(() => {});
+
+  $("nut-tu-van").onclick = () => {
+    $("nut-tu-van").disabled = true;
+    gui("/su-kien", { loai: "goi_tu_van", ...vt })
+      .then(() => bao($("bao-tu-van"), "Đã báo nhân viên. Vui lòng chờ tại kệ, nhân viên sẽ tới ngay."))
+      .catch((e) => { $("nut-tu-van").disabled = false; bao($("bao-tu-van"), e.message); });
+  };
+
+  $("nut-dang-ky").onclick = () => {
+    if (!$("dong-y").checked) return bao($("bao-dk"), "Vui lòng tick ô đồng ý trước khi đăng ký.");
+    gui("/dang-ky", { sdt: $("sdt").value.trim(), imei: $("imei").value.trim(), dong_y: true, sku: vt.sku, cn: vt.cn, nguon: vt.nguon })
+      .then(() => bao($("bao-dk"), "Đăng ký thành công. Cảm ơn anh/chị!"))
+      .catch((e) => bao($("bao-dk"), e.message));
+  };
+
+  $("nut-huy").onclick = () => {
+    gui("/huy-dang-ky", { sdt: $("sdt").value.trim() })
+      .then(() => bao($("bao-dk"), "Đã ghi nhận rút lại đồng ý. Cửa hàng sẽ ngừng gửi tin."))
+      .catch((e) => bao($("bao-dk"), e.message));
+  };
+})();
+</script>
+</body>
+</html>

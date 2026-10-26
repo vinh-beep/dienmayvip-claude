@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quản lý báo giá NCC Khương Việt</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--xanh:#1428a0;--xanh-nhat:#e8ecfb;--luc:#1b7f3b;--luc-nhat:#e3f5e8;--cam:#b45309;--cam-nhat:#fff1dc;--xam:#6b7280;--vien:#d9dde3;--nen:#f5f6f8;--chu:#111827}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 "Segoe UI",system-ui,Arial,sans-serif;background:var(--nen);color:var(--chu)}
+header{background:var(--xanh);color:#fff;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header h1{margin:0;font-size:18px;font-weight:600}
+header small{opacity:.85}
+nav{display:flex;gap:4px;padding:10px 20px 0;background:#fff;border-bottom:1px solid var(--vien);flex-wrap:wrap}
+nav button{border:1px solid var(--vien);border-bottom:none;background:#f3f4f6;padding:9px 14px;border-radius:8px 8px 0 0;cursor:pointer;font-weight:600;color:var(--xam)}
+nav button.chon{background:#fff;color:var(--xanh);border-color:var(--vien);position:relative;top:1px}
+nav button .dem{background:var(--xanh-nhat);color:var(--xanh);border-radius:10px;padding:0 7px;margin-left:6px;font-size:12px}
+main{padding:16px 20px;max-width:1400px;margin:0 auto}
+.the{background:#fff;border:1px solid var(--vien);border-radius:10px;padding:14px;margin-bottom:14px}
+.hang{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.hang label{color:var(--xam);font-size:13px}
+input,select,textarea{font:inherit;border:1px solid var(--vien);border-radius:6px;padding:7px 9px;background:#fff}
+textarea{width:100%;min-height:220px;font-family:Consolas,monospace;font-size:13px}
+button.nut{font:inherit;border:1px solid var(--xanh);background:var(--xanh);color:#fff;border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600}
+button.nut.phu{background:#fff;color:var(--xanh)}
+button.nut.nguy{background:#fff;color:#b91c1c;border-color:#b91c1c}
+button.nut:disabled{opacity:.5;cursor:default}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--vien);text-align:left;vertical-align:top}
+th{background:#f9fafb;color:var(--xam);font-weight:600;position:sticky;top:0}
+td.so,th.so{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+tr.ngay-moi td{background:#fbfcff}
+.nhan{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.nhan.da{background:var(--luc-nhat);color:var(--luc)}
+.nhan.chua{background:var(--cam-nhat);color:var(--cam)}
+.tang{color:#b91c1c}.giam{color:var(--luc)}.bang{color:var(--xam)}
+.ghi{color:var(--xam);font-size:12px}
+.thong-bao{padding:8px 12px;border-radius:6px;background:var(--luc-nhat);color:var(--luc);margin-bottom:10px;display:none}
+.thong-bao.loi{background:#fee2e2;color:#b91c1c}
+.trong{color:var(--xam);padding:24px;text-align:center}
+.cuon{overflow:auto;max-height:70vh}
+.mo-ta{color:var(--xam);margin:0 0 10px}
+td input,td select{width:100%;padding:4px 6px;font-size:13px}
+td input.so{text-align:right}
+.hop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center}
+.hop.mo{display:flex}
+.hop .the{width:520px;max-width:95vw}
+.luoi{display:grid;grid-template-columns:120px 1fr;gap:8px;align-items:center}
+.tom-tat{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.o{background:var(--xanh-nhat);border-radius:8px;padding:8px 14px}
+.o b{display:block;font-size:18px;color:var(--xanh)}
+.o span{color:var(--xam);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Quản lý báo giá NCC Khương Việt</h1><small>MD Samsung · dữ liệu nội bộ, chỉ lưu trên máy này: <span id="thuMuc"></span></small></div>
+  <div><button class="nut phu" onclick="xuatCSV('')">Xuất CSV toàn bộ (dmv_GiaNCC)</button></div>
+</header>
+<nav>
+  <button data-tab="da" onclick="chonTab('da')">Đã tham gia CTKM Samsung <span class="dem" id="demDa">0</span></button>
+  <button data-tab="chua" onclick="chonTab('chua')">Chưa tham gia CTKM Samsung <span class="dem" id="demChua">0</span></button>
+  <button data-tab="nhap" onclick="chonTab('nhap')">Nhập bảng giá mới</button>
+  <button data-tab="lich-su" onclick="chonTab('lich-su')">Lịch sử theo ngày</button>
+  <button data-tab="hddt" onclick="chonTab('hddt')">HĐĐT NCC <span class="dem" id="demHD">0</span></button>
+</nav>
+<main>
+  <div class="thong-bao" id="thongBao"></div>
+
+  <section id="tab-da" class="tab">
+    <p class="mo-ta">Hàng <b>đã kích hoạt</b> = máy đã tham gia chương trình khuyến mãi (CTKM) Samsung. Giá thường thấp hơn hàng chưa kích; có bậc số lượng. Bán phải ghi rõ tình trạng kích hoạt.</p>
+    <div id="bang-da"></div>
+  </section>
+  <section id="tab-chua" class="tab">
+    <p class="mo-ta">Hàng <b>chưa kích hoạt</b> = máy chưa tham gia CTKM Samsung (tồn mới nguyên). Giá cao hơn; kiểm thêm bảng giá hãng và hỗ trợ (ST) trước khi đặt.</p>
+    <div id="bang-chua"></div>
+  </section>
+
+  <section id="tab-nhap" class="tab">
+    <div class="the">
+      <div class="hang">
+        <label>NCC</label><input id="ncc" value="Khuong Viet - MD Samsung" size="28">
+        <label>Ngày báo giá</label><input id="ngay" size="12" placeholder="dd/mm/yyyy">
+        <button class="nut" onclick="docTin()">Đọc tin Telegram</button>
+        <label>hoặc nhập CSV</label><input type="file" id="tepCSV" accept=".csv,text/csv" onchange="docCSV(this)">
+      </div>
+      <textarea id="vanBan" placeholder="Dán nguyên tin Telegram của NCC vào đây, giữ cả dòng tiêu đề 'Chưa kích' / 'Hàng Kích Hoạt'. Mỗi mặt hàng một dòng bắt đầu bằng dấu +"></textarea>
+    </div>
+    <div class="the" id="xemTruoc" style="display:none">
+      <div class="hang">
+        <b>Kiểm tra trước khi lưu</b> <span class="ghi">Sửa trực tiếp trong ô. Bỏ chọn dòng không muốn lưu. Loại hàng: Đã kích = đã tham gia CTKM, Chưa kích = chưa tham gia CTKM.</span>
+        <span style="flex:1"></span>
+        <button class="nut" id="nutLuu" onclick="luu()">Lưu vào kho</button>
+      </div>
+      <div class="cuon"><table id="bangXemTruoc"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-lich-su" class="tab">
+    <div id="bang-lich-su"></div>
+  </section>
+
+  <section id="tab-hddt" class="tab">
+    <p class="mo-ta">Hoá đơn điện tử (HĐĐT) của các NCC (Khương Việt qua Fast e-Invoice; TCT, Long Hưng, Thanh Liêm qua MISA meinvoice): tự tìm từ email (danh sách Claude Cloud ghi lên Bridge hoặc IMAP Gmail, lấy cả tệp đính kèm), từ Everything, hoặc quét thư mục; tải XML/PDF về máy; đối chiếu từng dòng hoá đơn với báo giá gần nhất.</p>
+    <div class="the">
+      <div class="hang">
+        <button class="nut" onclick="hdNap('/api/hddt/nap-bridge',{})" title="Đọc hddt-links-*.json trong thư mục Bridge (G:\My Drive\DMV-Cloud-Bridge)">1. Nạp từ Bridge (AI Cloud đã tìm email)</button>
+        <button class="nut phu" onclick="hdNap('/api/hddt/imap',{})" title="Đăng nhập IMAP Gmail bằng mật khẩu ứng dụng, tìm thư Fast e-Invoice">2. Tìm trong Gmail (IMAP)</button>
+        <button class="nut phu" onclick="hdNap('/api/hddt/everything',{})">3. Tìm bằng Everything</button>
+        <button class="nut phu" onclick="hdNap('/api/hddt/quet',{})">4. Quét thư mục</button>
+        <button class="nut phu" onclick="moDanEmail()">Dán email</button>
+        <span style="flex:1"></span>
+        <button class="nut" onclick="hdNap('/api/hddt/tai',{ID:0})">Tải XML + PDF (tất cả còn thiếu)</button>
+        <button class="nut phu" onclick="location.href='/api/hddt/xuat-csv'">Xuất CSV</button>
+        <button class="nut phu" onclick="moCauHinh()">Cấu hình</button>
+      </div>
+      <div class="ghi" id="hdTrangThai"></div>
+    </div>
+    <div class="the" id="hopDanEmail" style="display:none">
+      <div class="hang"><b>Dán nội dung email Fast e-Invoice</b><span class="ghi">(mở email trong Gmail → Ctrl+A, Ctrl+C → dán; có thể dán nhiều email nối nhau)</span><span style="flex:1"></span><button class="nut" onclick="hdNap('/api/hddt/nap-email',{VanBan:document.getElementById('emailText').value});document.getElementById('hopDanEmail').style.display='none'">Đọc email</button></div>
+      <textarea id="emailText" style="min-height:140px"></textarea>
+    </div>
+    <div class="the" id="hopDanJSON" style="display:none">
+      <div class="hang"><b>Dán JSON danh sách link (từ chat Claude)</b><span style="flex:1"></span><button class="nut" onclick="hdNap('/api/hddt/nap-bridge',{JSON:document.getElementById('jsonText').value});document.getElementById('hopDanJSON').style.display='none'">Nạp</button></div>
+      <textarea id="jsonText" style="min-height:120px"></textarea>
+    </div>
+    <div id="bang-hddt"></div>
+  </section>
+</main>
+
+<div class="hop" id="hopHD">
+  <div class="the" style="width:900px">
+    <div class="hang"><h3 style="margin:0" id="hdTieuDe">Hoá đơn</h3><span style="flex:1"></span><button class="nut phu" onclick="document.getElementById('hopHD').classList.remove('mo')">Đóng</button></div>
+    <div id="hdNoiDung" class="cuon" style="max-height:60vh"></div>
+  </div>
+</div>
+<div class="hop" id="hopCauHinh">
+  <div class="the" style="width:640px">
+    <h3 style="margin-top:0">Cấu hình HĐĐT</h3>
+    <div class="luoi">
+      <label>Lọc NCC</label><input id="c-locNCC" placeholder="KHUONG VIET, TCT, LONG HUNG, THANH LIEM">
+      <label>MST NCC</label><input id="c-mstNCC" placeholder="(tuỳ chọn) nhận thêm theo MST, kể cả chi nhánh -001; cách nhau dấu phẩy">
+      <label>Người gửi HĐĐT</label><input id="c-nguoiGuiHDDT" placeholder="địa chỉ email, cách nhau dấu phẩy (cho IMAP)">
+      <label>Everything URL</label><input id="c-everythingURL" placeholder="http://127.0.0.1:8080">
+      <label>Thư mục quét</label><input id="c-thuMucQuet" placeholder="nhiều thư mục cách nhau dấu ;">
+      <label>Thư mục Bridge</label><input id="c-thuMucBridge" placeholder="G:\My Drive\DMV-Cloud-Bridge">
+      <label>IMAP tài khoản</label><input id="c-imapUser" placeholder="vinh@dienmayvip.com">
+      <label>Mật khẩu ứng dụng</label><input id="c-imapMatKhau" type="password" placeholder="16 ký tự từ Google → Bảo mật → Mật khẩu ứng dụng">
+      <label>IMAP từ ngày</label><input id="c-imapTuNgay" placeholder="dd/mm/yyyy">
+    </div>
+    <p class="ghi">Everything: Tools → Options → HTTP Server → bật, cổng 8080. Mật khẩu ứng dụng chỉ lưu trong du-lieu trên máy này. Lọc NCC so không dấu, không phân biệt hoa thường.</p>
+    <div class="hang" style="justify-content:flex-end"><button class="nut phu" onclick="document.getElementById('hopCauHinh').classList.remove('mo')">Huỷ</button><button class="nut" onclick="luuCauHinh()">Lưu</button></div>
+  </div>
+</div>
+<div class="hop" id="hopSua">
+  <div class="the">
+    <h3 style="margin-top:0">Sửa dòng giá</h3>
+    <div class="luoi">
+      <label>Tên hàng</label><input id="s-tenHang">
+      <label>Model</label><input id="s-model">
+      <label>Màu</label><input id="s-mau">
+      <label>Loại hàng</label><select id="s-loaiHang"><option value="DaKich">Đã kích hoạt (đã tham gia CTKM)</option><option value="ChuaKich">Chưa kích hoạt (chưa tham gia CTKM)</option></select>
+      <label>SL từ</label><input id="s-slMin" type="number" min="0">
+      <label>Đơn giá (VND)</label><input id="s-donGia" type="number" min="0" step="1000">
+      <label>Ngày</label><input id="s-ngay">
+      <label>NCC</label><input id="s-ncc">
+      <label>Ghi chú</label><input id="s-ghiChu">
+    </div>
+    <div class="hang" style="margin-top:12px;justify-content:flex-end">
+      <button class="nut phu" onclick="dongSua()">Huỷ</button>
+      <button class="nut" onclick="luuSua()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let DU_LIEU=[], XEM_TRUOC=[], TAB='da', LOC={da:{ngay:'',tim:''},chua:{ngay:'',tim:''}}, DANG_SUA=null;
+const vnd=n=>Number(n).toLocaleString('vi-VN');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const khoaNgay=n=>n&&n.length===10?n.slice(6)+n.slice(3,5)+n.slice(0,2):n||'';
+const homNay=()=>{const d=new Date();return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()};
+
+function baoCao(msg,loi){const t=document.getElementById('thongBao');t.textContent=msg;t.className='thong-bao'+(loi?' loi':'');t.style.display='block';setTimeout(()=>t.style.display='none',5000)}
+function chonTab(t){TAB=t;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('chon',b.dataset.tab===t));document.querySelectorAll('.tab').forEach(s=>s.style.display=s.id==='tab-'+t?'':'none');ve()}
+
+async function tai(){const r=await fetch('/api/du-lieu');const j=await r.json();DU_LIEU=j.dong||[];document.getElementById('thuMuc').textContent=j.thuMuc||'';document.title=j.tenApp||document.title;ve()}
+
+function cacNgay(ds){return [...new Set(ds.map(d=>d.ngay))].sort((a,b)=>khoaNgay(b).localeCompare(khoaNgay(a)))}
+
+function giaTruoc(d){ // cùng tên hàng, cùng loại, cùng bậc SL, ngày gần nhất trước đó
+  let tot=null;for(const x of DU_LIEU){if(x.id===d.id||x.tenHang!==d.tenHang||x.loaiHang!==d.loaiHang||x.slMin!==d.slMin)continue;if(khoaNgay(x.ngay)>=khoaNgay(d.ngay))continue;if(!tot||khoaNgay(x.ngay)>khoaNgay(tot.ngay))tot=x}return tot}
+
+function veNhom(loai){
+  const key=loai==='DaKich'?'da':'chua', loc=LOC[key];
+  const tatCa=DU_LIEU.filter(d=>d.loaiHang===loai);
+  const ngays=cacNgay(tatCa);
+  if(!loc.ngay||!ngays.includes(loc.ngay))loc.ngay=ngays[0]||'';
+  let ds=tatCa.filter(d=>d.ngay===loc.ngay);
+  if(loc.tim){const t=loc.tim.toLowerCase();ds=ds.filter(d=>(d.tenHang+' '+d.model+' '+d.mau+' '+d.ghiChu).toLowerCase().includes(t))}
+  ds.sort((a,b)=>a.tenHang.localeCompare(b.tenHang)||(a.slMin||999)-(b.slMin||999));
+  const soMat=new Set(ds.map(d=>d.tenHang)).size;
+  let h=`<div class="the"><div class="hang">
+    <label>Ngày báo giá ▼</label><select onchange="LOC.${key}.ngay=this.value;ve()">${ngays.map(n=>`<option ${n===loc.ngay?'selected':''}>${n}</option>`).join('')}</select>
+    <input placeholder="Tìm tên / model / màu" value="${esc(loc.tim)}" oninput="LOC.${key}.tim=this.value;ve()">
+    <span class="ghi">${soMat} mặt hàng · ${ds.length} dòng giá</span><span style="flex:1"></span>
+    <button class="nut phu" onclick="xuatCSV('${loai}','${loc.ngay}')">Xuất CSV ngày này</button>
+    <button class="nut nguy" onclick="xoaNgay('${loai}','${loc.ngay}')">Xoá bảng ngày này</button></div>`;
+  if(!ds.length){h+=`<div class="trong">Chưa có dữ liệu. Vào tab "Nhập bảng giá mới" để dán tin NCC.</div></div>`;return h}
+  h+=`<div class="cuon"><table><thead><tr><th>Tên hàng</th><th>Model</th><th>Màu</th><th class="so">SL từ</th><th class="so">Đơn giá</th><th class="so">So lần trước</th><th>Ghi chú</th><th></th></tr></thead><tbody>`;
+  for(const d of ds){const t=giaTruoc(d);let so='<span class="bang">—</span>';
+    if(t){const ch=d.donGia-t.donGia;so=ch>0?`<span class="tang">▲ ${vnd(ch)}</span>`:ch<0?`<span class="giam">▼ ${vnd(-ch)}</span>`:`<span class="bang">= (${t.ngay})</span>`;if(ch)so+=`<div class="ghi">${t.ngay}: ${vnd(t.donGia)}</div>`}
+    h+=`<tr><td><b>${esc(d.tenHang)}</b></td><td>${esc(d.model)}</td><td>${esc(d.mau)}</td><td class="so">${d.slMin===0?'<span class="ghi">SL?</span>':d.slMin}</td><td class="so"><b>${vnd(d.donGia)}</b></td><td class="so">${so}</td><td class="ghi">${esc(d.ghiChu)}</td><td style="white-space:nowrap"><a href="#" onclick="moSua(${d.id});return false">Sửa</a> · <a href="#" onclick="xoaDong(${d.id});return false">Xoá</a></td></tr>`}
+  return h+'</tbody></table></div></div>'}
+
+function veLichSu(){
+  const ngays=cacNgay(DU_LIEU);
+  if(!ngays.length)return '<div class="the"><div class="trong">Chưa có dữ liệu.</div></div>';
+  let h='<div class="the"><div class="tom-tat">';
+  h+=`<div class="o"><b>${ngays.length}</b><span>ngày báo giá</span></div><div class="o"><b>${DU_LIEU.length}</b><span>dòng giá</span></div><div class="o"><b>${new Set(DU_LIEU.map(d=>d.tenHang)).size}</b><span>mặt hàng</span></div>`;
+  h+='</div><table><thead><tr><th>Ngày ▼</th><th>NCC</th><th class="so">Đã tham gia CTKM</th><th class="so">Chưa tham gia CTKM</th><th>Lưu lúc</th><th></th></tr></thead><tbody>';
+  for(const n of ngays){const ds=DU_LIEU.filter(d=>d.ngay===n);const nccs=[...new Set(ds.map(d=>d.ncc))].join(', ');
+    h+=`<tr><td><b>${n}</b></td><td>${esc(nccs)}</td><td class="so">${ds.filter(d=>d.loaiHang==='DaKich').length}</td><td class="so">${ds.filter(d=>d.loaiHang==='ChuaKich').length}</td><td class="ghi">${esc(ds[0].taoLuc)}</td><td><a href="#" onclick="xuatCSV('','${n}');return false">Xuất CSV</a></td></tr>`}
+  return h+'</tbody></table></div>'}
+
+let HDDT={hoaDon:[],cauHinh:{},tepBridge:[]};
+const nccNgan=s=>(s||'').replace(/^CÔNG TY (TNHH|CỔ PHẦN|TRÁCH NHIỆM HỮU HẠN)?\s*(THƯƠNG MẠI|ĐẦU TƯ|MTV)?[^A-ZĐ]*/i,'').replace(/^(THƯƠNG MẠI|-|DỊCH VỤ|VÀ|&|\s)+/i,'')||s;
+const nhanNguon={email:'Email',bridge:'Bridge (AI Cloud)',imap:'Gmail IMAP',everything:'Everything','thu-muc':'Thư mục',tay:'Tay'};
+const nhanTT={moi:'<span class="nhan chua">Chưa tải</span>','da-tai':'<span class="nhan da">Đã tải</span>','da-doc':'<span class="nhan da">Đã đọc XML</span>',loi:'<span class="nhan" style="background:#fee2e2;color:#b91c1c">Lỗi</span>'};
+async function taiHDDT(){const r=await fetch('/api/hddt');HDDT=await r.json();document.getElementById('demHD').textContent=HDDT.hoaDon.length;if(TAB==='hddt')veHDDT()}
+let LOC_HD='';
+function veHDDT(){const nccs=[...new Set(HDDT.hoaDon.map(d=>nccNgan(d.ncc)||'?'))].sort();if(LOC_HD&&!nccs.includes(LOC_HD))LOC_HD='';const ds=HDDT.hoaDon.filter(d=>!LOC_HD||(nccNgan(d.ncc)||'?')===LOC_HD);let h='<div class="the">';
+  h+=`<div class="hang"><label>NCC</label><select onchange="LOC_HD=this.value;veHDDT()"><option value="">Tất cả (${HDDT.hoaDon.length})</option>${nccs.map(n=>`<option ${n===LOC_HD?'selected':''} value="${esc(n)}">${esc(n)} (${HDDT.hoaDon.filter(d=>(nccNgan(d.ncc)||'?')===n).length})</option>`).join('')}</select><span class="ghi">${ds.length} hoá đơn</span></div>`;
+  h+=`<div class="ghi" style="margin-bottom:8px">Tệp link trên Bridge: ${HDDT.tepBridge.length?HDDT.tepBridge.map(t=>esc(t.split(/[\\/]/).pop())).join(', '):'(chưa có — Claude Cloud sẽ ghi hddt-links-*.json khi tìm email) '} · <a href="#" onclick="document.getElementById('hopDanJSON').style.display='';return false">dán JSON tay</a> · Tệp tải về: ${esc(HDDT.thuMucHD)}</div>`;
+  if(!ds.length){h+='<div class="trong">Chưa có hoá đơn. Bấm "Nạp từ Bridge" hoặc "Tìm bằng Everything".</div></div>';document.getElementById('bang-hddt').innerHTML=h;return}
+  h+='<div class="cuon"><table><thead><tr><th>Ngày lập ▼</th><th>Số HĐ</th><th>Ký hiệu</th><th>NCC</th><th class="so">Tổng thanh toán</th><th class="so">Dòng</th><th>Nguồn</th><th>Trạng thái</th><th>Tệp</th><th></th></tr></thead><tbody>';
+  for(const d of ds){h+=`<tr><td style="white-space:nowrap">${d.ngayLap?esc(d.ngayLap):'<span class="ghi">email '+esc(d.emailNgay||'?')+'</span>'}</td><td><b>${esc(d.so)}</b></td><td>${esc(d.kyHieu)}</td><td style="white-space:nowrap" title="${esc(d.ncc)}">${esc(nccNgan(d.ncc))}</td><td class="so">${d.tongTT?vnd(d.tongTT):'—'}</td><td class="so">${d.dong?d.dong.length:0}</td><td>${nhanNguon[d.nguon]||esc(d.nguon)}</td><td>${nhanTT[d.trangThai]||esc(d.trangThai)}${d.loi?'<div class="ghi" title="'+esc(d.loi)+'">'+esc(d.loi.length>110?d.loi.slice(0,110)+'…':d.loi)+'</div>':''}</td>
+    <td style="white-space:nowrap">${d.tepPDF?`<a href="#" onclick="moTepHD(${d.id},'pdf');return false">PDF</a> `:''}${d.tepXML?`<a href="#" onclick="moTepHD(${d.id},'xml');return false">XML</a> `:''}${d.linkTraCuu?`<a href="${esc(d.linkTraCuu)}" target="_blank">Tra cứu</a>`:''}</td>
+    <td style="white-space:nowrap">${(d.linkXML||d.linkPDF)?`<a href="#" onclick="hdNap('/api/hddt/tai',{ID:${d.id}});return false">Tải</a> · `:''}${d.tepXML?`<a href="#" onclick="hdNap('/api/hddt/doc-tep',{ID:${d.id}});return false">Đọc lại</a> · `:''}<a href="#" onclick="xemHD(${d.id});return false">Chi tiết</a> · <a href="#" onclick="xoaHD(${d.id});return false">Xoá</a></td></tr>`}
+  document.getElementById('bang-hddt').innerHTML=h+'</tbody></table></div></div>'}
+async function hdNap(url,body){const tt=document.getElementById('hdTrangThai');tt.textContent='Đang xử lý… (IMAP/Everything có thể mất vài chục giây)';
+  try{const r=await fetch(url,{method:'POST',body:JSON.stringify(body)});const t=await r.text();if(!r.ok){tt.textContent='';return baoCao(t,true)}
+   let j={};try{j=JSON.parse(t)}catch(e){}tt.textContent=j.thongBao||'';baoCao(j.thongBao||'Xong.');if(j.chiTiet&&j.chiTiet.length)tt.textContent+=' — '+j.chiTiet.join(' | ')}
+  catch(e){baoCao('Lỗi: '+e,true)}await taiHDDT()}
+function moDanEmail(){document.getElementById('hopDanEmail').style.display=''}
+async function moTepHD(id,loai){const r=await fetch(`/api/hddt/mo?id=${id}&loai=${loai}`);if(!r.ok)baoCao(await r.text(),true)}
+async function xoaHD(id){if(!confirm('Xoá hoá đơn khỏi danh sách? (tệp đã tải vẫn còn trong du-lieu/hddt)'))return;await fetch('/api/hddt/xoa',{method:'POST',body:JSON.stringify({ID:id})});await taiHDDT()}
+async function xemHD(id){const r=await fetch('/api/hddt/chi-tiet?id='+id);if(!r.ok)return baoCao(await r.text(),true);const j=await r.json();const h=j.hoaDon;
+  document.getElementById('hdTieuDe').textContent=`HĐ ${h.kyHieu||''} ${h.so} — ${h.ncc||''} — ${h.ngayLap||''}`;
+  let t=`<div class="tom-tat"><div class="o"><b>${vnd(h.tienHang)}</b><span>tiền hàng</span></div><div class="o"><b>${vnd(h.thue)}</b><span>thuế</span></div><div class="o"><b>${vnd(h.tongTT)}</b><span>tổng thanh toán</span></div></div>`;
+  if(!j.dong||!j.dong.length)t+='<div class="trong">Chưa đọc được dòng hàng (hoá đơn chưa tải XML hoặc XML không có chi tiết).</div>';
+  else{t+='<table><thead><tr><th>Tên hàng trên HĐ</th><th class="so">SL</th><th class="so">Đơn giá HĐ</th><th class="so">Thành tiền</th><th>Báo giá gần nhất</th><th class="so">Chênh HĐ − báo giá</th></tr></thead><tbody>';
+   for(const d of j.dong){const b=d.baoGia;let so='<span class="ghi">không khớp model</span>',ch='—';if(b){so=`${esc(b.tenHang)} · ${b.loaiHang==='DaKich'?'đã CTKM':'chưa CTKM'} · ${b.ngay}: <b>${vnd(b.donGia)}</b>`;const c=d.donGia-b.donGia;ch=c>0?`<span class="tang">▲ ${vnd(c)}</span>`:c<0?`<span class="giam">▼ ${vnd(-c)}</span>`:'<span class="bang">=</span>'}
+    t+=`<tr><td>${esc(d.ten)}</td><td class="so">${d.sl}</td><td class="so"><b>${vnd(d.donGia)}</b></td><td class="so">${vnd(d.thanhTien)}</td><td>${so}</td><td class="so">${ch}</td></tr>`}
+   t+='</tbody></table>'}
+  t+=`<p class="ghi">Tệp: ${esc(h.tepXML||'(chưa có XML)')} · ${esc(h.tepPDF||'(chưa có PDF)')}${h.maTraCuu?' · Mã tra cứu: '+esc(h.maTraCuu):''}</p>`;
+  document.getElementById('hdNoiDung').innerHTML=t;document.getElementById('hopHD').classList.add('mo')}
+function moCauHinh(){const c=HDDT.cauHinh;for(const k of ['locNCC','mstNCC','nguoiGuiHDDT','everythingURL','thuMucBridge','imapUser','imapMatKhau','imapTuNgay'])document.getElementById('c-'+k).value=c[k]||'';document.getElementById('c-thuMucQuet').value=(c.thuMucQuet||[]).join('; ');document.getElementById('hopCauHinh').classList.add('mo')}
+async function luuCauHinh(){const c={};for(const k of ['locNCC','mstNCC','nguoiGuiHDDT','everythingURL','thuMucBridge','imapUser','imapMatKhau','imapTuNgay'])c[k]=document.getElementById('c-'+k).value.trim();c.thuMucQuet=document.getElementById('c-thuMucQuet').value.split(';').map(x=>x.trim()).filter(Boolean);
+  const r=await fetch('/api/hddt/cau-hinh',{method:'POST',body:JSON.stringify(c)});if(!r.ok)return baoCao(await r.text(),true);document.getElementById('hopCauHinh').classList.remove('mo');await taiHDDT();baoCao('Đã lưu cấu hình.')}
+
+function ve(){
+  document.getElementById('demDa').textContent=DU_LIEU.filter(d=>d.loaiHang==='DaKich').length;
+  document.getElementById('demChua').textContent=DU_LIEU.filter(d=>d.loaiHang==='ChuaKich').length;
+  if(TAB==='da')document.getElementById('bang-da').innerHTML=veNhom('DaKich');
+  if(TAB==='chua')document.getElementById('bang-chua').innerHTML=veNhom('ChuaKich');
+  if(TAB==='lich-su')document.getElementById('bang-lich-su').innerHTML=veLichSu();
+  if(TAB==='hddt')veHDDT();
+}
+
+async function docTin(){
+  const vanBan=document.getElementById('vanBan').value, ncc=document.getElementById('ncc').value, ngay=document.getElementById('ngay').value;
+  if(!/^\d{2}\/\d{2}\/\d{4}$/.test(ngay))return baoCao('Ngày báo giá phải dạng dd/mm/yyyy',true);
+  if(!vanBan.trim())return baoCao('Chưa dán tin NCC',true);
+  const r=await fetch('/api/doc-tin',{method:'POST',body:JSON.stringify({VanBan:vanBan,NCC:ncc,Ngay:ngay})});
+  XEM_TRUOC=(await r.json()).map(d=>({...d,giu:true}));
+  if(!XEM_TRUOC.length)return baoCao('Không đọc được dòng giá nào. Mỗi mặt hàng phải bắt đầu bằng dấu + và có giá dạng 1.234k',true);
+  veXemTruoc()}
+
+function docCSV(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{
+  const dong=rd.result.replace(/^﻿/,'').split(/\r?\n/).filter(x=>x.trim());const cot=tachCSV(dong[0]);const idx=t=>cot.indexOf(t);
+  if(idx('TenHang')<0||idx('DonGia_VND')<0)return baoCao('CSV phải có cột TenHang và DonGia_VND (chuẩn dmv_GiaNCC)',true);
+  XEM_TRUOC=dong.slice(1).map(l=>{const c=tachCSV(l);const lh=(c[idx('LoaiHang')]||'').toLowerCase();return{giu:true,ngay:c[idx('NgayBaoGia')]||document.getElementById('ngay').value,ncc:c[idx('NCC')]||document.getElementById('ncc').value,tenHang:c[idx('TenHang')],model:c[idx('Model')]||'',mau:c[idx('MauSac')]||'',loaiHang:lh.includes('da kich')||lh.includes('dakich')?'DaKich':'ChuaKich',slMin:parseInt(c[idx('SL_Min')]||'1')||0,donGia:parseInt(c[idx('DonGia_VND')]||'0')||0,ghiChu:c[idx('GhiChu')]||'',dongGoc:l}}).filter(d=>d.tenHang&&d.donGia>0);
+  veXemTruoc();inp.value=''};rd.readAsText(f,'utf-8')}
+function tachCSV(l){const r=[];let c='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(q){if(ch==='"'&&l[i+1]==='"'){c+='"';i++}else if(ch==='"')q=false;else c+=ch}else if(ch==='"')q=true;else if(ch===','){r.push(c);c=''}else c+=ch}r.push(c);return r}
+
+function veXemTruoc(){
+  const b=document.getElementById('bangXemTruoc');
+  b.innerHTML=`<thead><tr><th></th><th>Tên hàng</th><th>Model</th><th>Màu</th><th>Loại hàng</th><th class="so">SL từ</th><th class="so">Đơn giá</th><th>Ghi chú</th><th>Dòng gốc</th></tr></thead><tbody>`+
+  XEM_TRUOC.map((d,i)=>`<tr><td><input type="checkbox" ${d.giu?'checked':''} onchange="XEM_TRUOC[${i}].giu=this.checked"></td>
+   <td><input value="${esc(d.tenHang)}" oninput="XEM_TRUOC[${i}].tenHang=this.value"></td>
+   <td><input value="${esc(d.model)}" size="6" oninput="XEM_TRUOC[${i}].model=this.value"></td>
+   <td><input value="${esc(d.mau)}" oninput="XEM_TRUOC[${i}].mau=this.value"></td>
+   <td><select onchange="XEM_TRUOC[${i}].loaiHang=this.value"><option value="DaKich" ${d.loaiHang==='DaKich'?'selected':''}>Đã kích (đã CTKM)</option><option value="ChuaKich" ${d.loaiHang!=='DaKich'?'selected':''}>Chưa kích (chưa CTKM)</option></select></td>
+   <td><input class="so" type="number" value="${d.slMin}" style="width:60px" oninput="XEM_TRUOC[${i}].slMin=parseInt(this.value)||0"></td>
+   <td><input class="so" type="number" step="1000" value="${d.donGia}" style="width:110px" oninput="XEM_TRUOC[${i}].donGia=parseInt(this.value)||0"></td>
+   <td><input value="${esc(d.ghiChu)}" oninput="XEM_TRUOC[${i}].ghiChu=this.value"></td>
+   <td class="ghi">${esc(d.dongGoc)}</td></tr>`).join('')+'</tbody>';
+  const thieu=XEM_TRUOC.filter(d=>!d.loaiHang).length;
+  document.getElementById('xemTruoc').style.display='';
+  baoCao(`Đọc được ${XEM_TRUOC.length} dòng giá.`+(thieu?` ${thieu} dòng chưa rõ Đã/Chưa kích (tin thiếu dòng tiêu đề), mặc định Chưa kích — kiểm lại.`:''),!!thieu)}
+
+async function luu(){
+  const ds=XEM_TRUOC.filter(d=>d.giu).map(({giu,...d})=>({...d,loaiHang:d.loaiHang||'ChuaKich'}));
+  if(!ds.length)return baoCao('Không có dòng nào được chọn',true);
+  const r=await fetch('/api/luu',{method:'POST',body:JSON.stringify(ds)});
+  if(!r.ok)return baoCao('Lưu lỗi: '+await r.text(),true);
+  XEM_TRUOC=[];document.getElementById('xemTruoc').style.display='none';document.getElementById('vanBan').value='';
+  await tai();baoCao(`Đã lưu ${ds.length} dòng giá. Bản cũ được sao lưu trong du-lieu/sao-luu.`);chonTab(ds.some(d=>d.loaiHang==='DaKich')?'da':'chua')}
+
+function moSua(id){const d=DU_LIEU.find(x=>x.id===id);if(!d)return;DANG_SUA=d;for(const k of ['tenHang','model','mau','loaiHang','slMin','donGia','ngay','ncc','ghiChu'])document.getElementById('s-'+k).value=d[k];document.getElementById('hopSua').classList.add('mo')}
+function dongSua(){document.getElementById('hopSua').classList.remove('mo');DANG_SUA=null}
+async function luuSua(){const d={...DANG_SUA};for(const k of ['tenHang','model','mau','loaiHang','ngay','ncc','ghiChu'])d[k]=document.getElementById('s-'+k).value;d.slMin=parseInt(document.getElementById('s-slMin').value)||0;d.donGia=parseInt(document.getElementById('s-donGia').value)||0;
+  const r=await fetch('/api/sua',{method:'POST',body:JSON.stringify(d)});if(!r.ok)return baoCao('Sửa lỗi: '+await r.text(),true);dongSua();await tai();baoCao('Đã sửa.')}
+async function xoaDong(id){if(!confirm('Xoá dòng giá này?'))return;await fetch('/api/xoa',{method:'POST',body:JSON.stringify([id])});await tai();baoCao('Đã xoá 1 dòng (có sao lưu).')}
+async function xoaNgay(loai,ngay){const ids=DU_LIEU.filter(d=>d.loaiHang===loai&&d.ngay===ngay).map(d=>d.id);if(!ids.length)return;if(!confirm(`Xoá ${ids.length} dòng giá ngày ${ngay} của nhóm này? Bản cũ vẫn còn trong du-lieu/sao-luu.`))return;await fetch('/api/xoa',{method:'POST',body:JSON.stringify(ids)});await tai();baoCao(`Đã xoá ${ids.length} dòng.`)}
+function xuatCSV(loai,ngay){location.href='/api/xuat-csv?loai='+encodeURIComponent(loai||'')+'&ngay='+encodeURIComponent(ngay||'')}
+
+document.getElementById('ngay').value=homNay();
+chonTab('da');tai();taiHDDT();
+</script>
+</body>
+</html>
