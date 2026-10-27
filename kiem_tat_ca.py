@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SUITES = ["sql-readonly-api", "drive-sync", "video-links", "ton-dong", "tong-hop-viec", "harness2-app-chuan", "nhac-cat"]
+SUITES = ["sql-readonly-api", "drive-sync", "video-links", "ton-dong", "tong-hop-viec", "harness2-app-chuan", "nhac-cat", "video-kiem-duyet"]
 
 # (thư mục, tệp, đoạn gốc, đoạn thay, ý nghĩa). Đoạn gốc PHẢI xuất hiện đúng 1 lần.
 MUTATIONS: list[tuple[str, str, str, str, str]] = [
@@ -50,6 +50,9 @@ MUTATIONS: list[tuple[str, str, str, str, str]] = [
     ("harness2-app-chuan", "kiem_chuan_app.py", 'kq["kiem"] = "--kiem" in all_text', 'kq["kiem"] = True', "coi app nào cũng có --kiem"),
     ("nhac-cat", "kiem_cat_nhac.py", "elif can > dai + 0.01:", "elif False:", "cho cắt vượt độ dài bài"),
     ("nhac-cat", "kiem_cat_nhac.py", "if len(seen.get(m.get(\"tep\", \"\"), [])) > 1:", "if False:", "cho 1 bài dùng nhiều SP"),
+    ("video-kiem-duyet", "doc_anh_du_phong.py", "if MAU_SDT.search(chuan_hoa_so(text)):", "if False:", "không chặn SĐT trên video"),
+    ("video-kiem-duyet", "doc_anh_du_phong.py", 'return False, f"Không OCR được khung hình', 'return True, f"Không OCR được khung hình', "OCR lỗi vẫn cho qua"),
+    ("video-kiem-duyet", "doc_anh_du_phong.py", "if dai <= 0:", "if False:", "video không đọc được vẫn cho qua"),
 ]
 
 
