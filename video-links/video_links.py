@@ -192,15 +192,43 @@ def open_link(url: str, *, opener: Callable[[str], Any] = webbrowser.open) -> tu
     return True, "Đã mở link trên trình duyệt"
 
 
+def tu_kiem() -> list[str]:
+    """--kiem: link độc hại bị loại, nhận nền tảng đúng, mở tệp không chạy lệnh thật."""
+    loi: list[str] = []
+    for bad in ("javascript:alert(1)", "file:///C:/Windows", "ftp://x.com/a", "", "youtube.com/abc"):
+        if clean_url(bad):
+            loi.append(f"link không an toàn lọt qua: {bad!r}")
+    if detect_platform("https://youtu.be/x") != "youtube" or detect_platform("https://www.tiktok.com/@a/video/1") != "tiktok":
+        loi.append("nhận nền tảng sai")
+    if detect_platform("https://youtube.com.gia-mao.vn/x") != "khac":
+        loi.append("tên miền giả mạo bị nhận là YouTube")
+    if _hop_le('C:\\a"b.mp4') or _hop_le("C:\\a\nb.mp4") or not _hop_le("C:\\Video\\A36.mp4"):
+        loi.append("kiểm đường dẫn tệp sai")
+    v = normalize({"ma": "A36", "url": "https://youtu.be/x", "tien_do": "150%", "trang_thai": "la"})
+    if v.tien_do != 100 or v.trang_thai != "da-dang" or v.nen_tang != "youtube":
+        loi.append("chuẩn hoá bản ghi sai")
+    calls: list[str] = []
+    ok, _ = open_link("javascript:alert(1)", opener=calls.append)
+    if ok or calls:
+        loi.append("mở được link javascript:")
+    return loi
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):  # console Windows cp1252 không in được tiếng Việt
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
+    if "--kiem" in (sys.argv[1:] if argv is None else argv):
+        loi = tu_kiem()
+        print("KIỂM: " + ("ĐẠT" if not loi else "LỖI"))
+        for l in loi:
+            print(" -", l)
+        return 0 if not loi else 1
     args = sys.argv[1:] if argv is None else argv
     if not args:
-        print("Dùng: python video_links.py <so_video.json|csv>")
+        print("Dùng: python video_links.py <so_video.json|csv>   ·   python video_links.py --kiem")
         return 1
     print(tom_tat_markdown(load_videos(Path(args[0]))))
     return 0

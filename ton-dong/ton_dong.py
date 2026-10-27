@@ -158,13 +158,46 @@ def markdown(kq: dict[str, Any], top: int = 20) -> str:
     return "\n".join(L) + "\n"
 
 
+def tu_kiem() -> list[str]:
+    """--kiem: chạy trên dữ liệu mẫu dựng sẵn, không cần tệp thật. Trả danh sách lỗi (rỗng = đạt)."""
+    loi: list[str] = []
+    if parse_number("1.234.567") != 1234567 or parse_number("12") != 12 or parse_number("abc") is not None:
+        loi.append("đọc số kiểu Việt sai")
+    hom_nay = date(2026, 10, 27)
+    th = {
+        "A36": {"ten": "Samsung A36", "ban_san": 3, "htsoft": 5, "gia_le": 7_000_000},
+        "SIM VIETTEL": {"ten": "Sim", "ban_san": 10, "htsoft": 20, "gia_le": 50_000},
+        "NOKIA 105": {"ten": "Nokia", "ban_san": 7, "htsoft": 7, "gia_le": 500_000},
+    }
+    ls = [(date(2026, 10, d), "NOKIA 105", 7) for d in range(5, 27)] + [(date(2026, 10, 26), "A36", 3)]
+    kq = tinh(th, ls, hom_nay=hom_nay, ngay_dong=14)
+    if kq["du_lieu_cu"]:
+        loi.append("dữ liệu 1 ngày tuổi bị coi là cũ")
+    if [r["sku"] for r in kq["hang_dong"]["danh_sach"]] != ["NOKIA 105"]:
+        loi.append("không nhận ra mã tồn không đổi ≥ 14 ngày")
+    sim = [r for r in kq["chenh_ngoai_san"]["danh_sach"] if r["la_sim"]]
+    if not sim or sim[0]["gia_tri_uoc_tinh"] is not None:
+        loi.append("SIM không được tính giá trị")
+    kq_cu = tinh(th, ls, hom_nay=date(2026, 11, 10), ngay_dong=14)
+    if not kq_cu["du_lieu_cu"] or not any(c.startswith("du-lieu-cu") for c in kq_cu["canh_bao"]):
+        loi.append("dữ liệu đã đứng 15 ngày mà không cảnh báo")
+    return loi
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):  # console Windows cp1252 không in được tiếng Việt
         try:
             stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
+    if "--kiem" in (sys.argv[1:] if argv is None else argv):
+        loi = tu_kiem()
+        print("KIỂM: " + ("ĐẠT" if not loi else "LỖI"))
+        for l in loi:
+            print(" -", l)
+        return 0 if not loi else 1
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--kiem", action="store_true", help="tự kiểm trên dữ liệu mẫu, không cần tệp")
     ap.add_argument("--tong-hop", required=True)
     ap.add_argument("--lich-su", required=True)
     ap.add_argument("--ra", required=True, help="thư mục ghi ton-dong.json và ton-dong.md")

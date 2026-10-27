@@ -95,3 +95,12 @@ def test_main_va_cp1252(tmp_path):
     assert b"Traceback" not in proc.stderr and proc.returncode == 0, proc.stderr
     assert json.loads((tmp_path / "ra" / "kiem-cat-nhac.json").read_text(encoding="utf-8"))["dat"] == 1
     assert kn.main(["--ke-hoach", str(tmp_path / "khong.json"), "--ra", str(tmp_path / "r2")]) == 1
+
+
+# ---------------------------------------------------------------- --kiem (chuẩn app Harness²)
+
+
+def test_tu_kiem_dat_va_lenh_kiem_ma_0(capsys):
+    assert kn.tu_kiem() == []
+    assert kn.main(["--kiem"]) == 0
+    assert "KIỂM: ĐẠT" in capsys.readouterr().out

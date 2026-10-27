@@ -28,3 +28,15 @@ jobs:
         run: python kiem_tat_ca.py
       - name: Tự kiểm bộ kiểm (đột biến)
         run: python kiem_tat_ca.py --tu-kiem
+      - name: Chuẩn app Harness² (mọi thư mục app phải có --kiem, HELP.md, không bí mật gán cứng)
+        run: python harness2-app-chuan/kiem_chuan_app.py --goc . --ra chuan-app-ci
+      - name: Mỗi app tự kiểm (--kiem)
+        shell: bash
+        run: |
+          set -e
+          python drive-sync/hoc_tu_chan.py --kiem
+          python sql-readonly-api/kiem_ket_noi.py --kiem
+          python ton-dong/ton_dong.py --kiem
+          python nhac-cat/kiem_cat_nhac.py --kiem
+          python tong-hop-viec/tong_hop_viec.py --kiem
+          python video-links/video_links.py --kiem

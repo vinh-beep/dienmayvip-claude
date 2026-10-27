@@ -141,3 +141,12 @@ def test_cli_khong_sap_khi_console_cp1252(files, tmp_path):
     assert b"Traceback" not in proc.stderr, proc.stderr.decode("utf-8", "replace")
     assert "Kiểm tra tồn đọng".encode("utf-8") in proc.stdout
     json.loads((tmp_path / "r" / "ton-dong.json").read_text(encoding="utf-8"))
+
+
+# ---------------------------------------------------------------- --kiem (chuẩn app Harness²)
+
+
+def test_tu_kiem_dat_va_lenh_kiem_ma_0(capsys):
+    assert td.tu_kiem() == []
+    assert td.main(["--kiem"]) == 0
+    assert "KIỂM: ĐẠT" in capsys.readouterr().out
