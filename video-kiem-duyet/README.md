@@ -37,3 +37,9 @@ if not ok:
 Cần `opencv-python`, `pytesseract` và Tesseract có gói tiếng Việt trên PC. Kiểm thử (33 ca) chạy không cần hai thứ đó nhờ hàm lấy khung và OCR tiêm vào được.
 
 Giới hạn: OCR trên hình nhỏ, chữ nghiêng có thể đọc sót; đây là lớp chặn cuối, không thay cho `kiem_duyet_bai` của bộ dựng.
+
+## Đã nối trên PC (28/10/2026 04:37, CC-QLVIP) — bài học Harness² vòng 2
+- Nối tại cổng chặn chung của `tu-dong-dang-video.py` (sau dựng mp4, trước tải lên), áp cho cả nháp cũ và bài mới. Không đạt → bỏ qua video đó, ghi tin Bridge `canh-bao`/`video-bi-chan`, cả lô vẫn chạy.
+- **Chỉ quét bản không SĐT** (TikTok/YouTube và sàn). Bản "Web Zalo FB" có hotline hợp lệ trên hình nên KHÔNG quét, nếu quét thì mọi bài Facebook bị chặn nhầm.
+- Nhớ kết quả theo tệp + mtime (`kiem-duyet-video-ocr.json`), dựng lại video thì quét lại; tin cảnh báo chỉ gửi 1 lần mỗi tệp. Đo thật: 8,6 s video sạch, 4,5 s video bị chặn ở giây 3; lô đầu ~100 video khoảng 10–15 phút, chỉ một lần.
+- Cờ `--thu-ocr <mp4>...` của `tu-dong-dang-video.py` chạy đúng cổng chặn mà không đăng, dùng để thử lại sau này.
