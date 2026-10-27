@@ -13,7 +13,14 @@ Bản nâng cấp của `_Shared/doc_anh_du_phong.py` anh Vĩnh gửi 27/10. Gi�
 ```
 python doc_anh_du_phong.py "D:\20 Kenh MXH\A04\A04 - TikTok YouTube.mp4"   # mã thoát 0 đạt, 1 chặn
 python doc_anh_du_phong.py --kiem                                             # tự kiểm luật chữ, không cần OCR
+python doc_anh_du_phong.py "<video.mp4>" --chi-tiet                           # thử video thật: in chữ OCR từng khung
 ```
-Cần `opencv-python`, `pytesseract` và Tesseract có gói tiếng Việt trên PC. Kiểm thử (28 ca) chạy không cần hai thứ đó nhờ hàm lấy khung và OCR tiêm vào được.
+
+## Thử 1 video thật trên PC trước khi thay bản cũ
+1. Chạy `--kiem` (phải 11/11) rồi chạy 1 video đã đăng với `--chi-tiet`, ghi log ra tệp.
+2. Đọc dòng `OCR:` từng khung: chữ giá/tên máy đọc có đúng không, có bắt nhầm SĐT/từ cấm không.
+3. Thử thêm 1 video cố ý có SĐT (hoặc ảnh có số) → phải CHẶN đúng giây.
+4. Chỉ khi 2 lần trên đúng mới thay `_Shared/doc_anh_du_phong.py`.
+Cần `opencv-python`, `pytesseract` và Tesseract có gói tiếng Việt trên PC. Kiểm thử (33 ca) chạy không cần hai thứ đó nhờ hàm lấy khung và OCR tiêm vào được.
 
 Giới hạn: OCR trên hình nhỏ, chữ nghiêng có thể đọc sót; đây là lớp chặn cuối, không thay cho `kiem_duyet_bai` của bộ dựng.

@@ -86,3 +86,17 @@ def test_cli_tu_kiem_va_cp1252():
     proc = subprocess.run([sys.executable, str(Path(da.__file__)), "--kiem"], capture_output=True, env=env, timeout=60)
     assert b"Traceback" not in proc.stderr and proc.returncode == 0, proc.stdout + proc.stderr
     assert "11/11".encode("utf-8") in proc.stdout
+
+
+def test_cli_chi_tiet_in_chu_ocr_va_van_chan(monkeypatch, capsys):
+    """--chi-tiet in chữ OCR từng khung để đối chiếu khi thử video thật; kết quả chặn/đạt không đổi."""
+    monkeypatch.setattr(da, "ocr_tesseract", lambda anh: "Lien he " + "09" + "12 345 678")
+    monkeypatch.setattr(da, "lay_khung_hinh_cv2", lambda p, giay: (10.0, [da.KhungHinh(g, object()) for g in giay]))
+    rc = da.main(["--chi-tiet", "video-gia.mp4"])
+    out = capsys.readouterr().out
+    assert rc == 1 and "OCR: Lien he" in out and "CHẶN" in out
+
+
+def test_cli_thieu_duong_dan_video_bao_cach_dung(capsys):
+    assert da.main(["--chi-tiet"]) == 1
+    assert "--kiem" in capsys.readouterr().out

@@ -5,6 +5,7 @@ không có OCR, không lấy được khung hình → CHẶN, không bao giờ "
 Dùng trên PC:  pip install opencv-python pytesseract  (+ Tesseract có gói vie)
   python doc_anh_du_phong.py "D:\\20 Kenh MXH\\A04\\A04 - TikTok YouTube.mp4"
   python doc_anh_du_phong.py --kiem       # tự kiểm luật chữ, không cần cv2/tesseract
+  python doc_anh_du_phong.py <video> --chi-tiet   # in thêm chữ OCR đọc được ở từng khung
 """
 from __future__ import annotations
 
@@ -114,7 +115,7 @@ def kiem_duyet_video_truoc_render(
     ocr: Callable[[Any], str] = ocr_tesseract,
     tu_cam_them: Iterable[str] = (),
 ) -> tuple[bool, str]:
-    lay_khung = lay_khung or lay_khung_cv2
+    lay_khung = lay_khung or lay_khung_hinh_cv2
     try:
         dai, _ = lay_khung(video_path, [])
     except Exception as exc:
@@ -163,7 +164,18 @@ def main(argv: list[str] | None = None) -> int:
             tu_cam = list(json.loads(cfg.read_text(encoding="utf-8-sig")))
         except ValueError:
             print("tu-cam-them.json hỏng, bỏ qua", file=sys.stderr)
-    ok, ly_do = kiem_duyet_video_truoc_render(args[0], tu_cam_them=tu_cam)
+    chi_tiet = "--chi-tiet" in args
+    video = next((a for a in args if not a.startswith("--")), "")
+    if not video:
+        print(__doc__)
+        return 1
+    ocr = ocr_tesseract
+    if chi_tiet:  # in chữ OCR đọc được ở từng khung để đối chiếu khi thử video thật
+        def ocr(anh: Any) -> str:
+            text = ocr_tesseract(anh)
+            print("  OCR: " + " ".join(text.split())[:200])
+            return text
+    ok, ly_do = kiem_duyet_video_truoc_render(video, ocr=ocr, tu_cam_them=tu_cam)
     print(("ĐẠT  " if ok else "CHẶN ") + ly_do)
     return 0 if ok else 1
 
