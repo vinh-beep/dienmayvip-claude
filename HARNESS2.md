@@ -41,7 +41,7 @@ Mẫu chuẩn cho mọi công cụ mới trên máy chính: **mặc định ch�
 | `harness2-chay-bu/` (nhánh `claude/magical-volta-z46fnn`, PR #1) | lịch gốc ghi "xong" vào `trang-thai-h2.json` | lúc khởi động quét việc lỡ, chạy bù trong cửa sổ 12 giờ, ghi `ket-qua-PC-H2-*` | việc tiền không bao giờ tự chạy; cửa RAM; kiểm quyền 1 lần |
 | `drive-sync/kiem_an_toan.py` + `hoc_tu_chan.py` | quét tên + nội dung, chặn fail-closed | anh phán xử oan/đúng → `bai-hoc-chan.json` + `so-bai-hoc-chan.md`; vòng 1 cho qua tệp "oan" khi SHA-256 còn khớp | `LUAT_CUNG`: bí mật, giá vốn, CCCD, tên tệp nhạy cảm — không nhận ngoại lệ |
 | `drive-sync/dong_bo_drive.py` (base, 25/10) | `rclone copy` | **đọc lại đích** bằng `rclone check --one-way` sau mỗi lượt thật; hỏng thì không ghi mốc thành công ("tải về ≠ đã nạp") | chỉ `copy`, không `sync`/xoá |
-| `kiem_tat_ca.py` + CI Ubuntu/Windows (base, 25/10) | bộ kiểm thử | **tự kiểm bộ kiểm** bằng đột biến: cố ý phá 15 chỗ (tắt token, tắt chặn giá vốn, `copy`→`sync`…), bộ kiểm phải đỏ | đột biến nào vẫn xanh = lỗ hổng → mã thoát 1 |
+| `kiem_tat_ca.py` + CI Ubuntu/Windows (base, 25/10) | bộ kiểm thử | **tự kiểm bộ kiểm** bằng đột biến: cố ý phá 27 chỗ (tắt token, tắt chặn giá vốn, `copy`→`sync`…), bộ kiểm phải đỏ | đột biến nào vẫn xanh = lỗ hổng → mã thoát 1 |
 | `sql-readonly-api/` | chặn cột nghi giá vốn/PII khi khởi động; khoá IP sau 10 lần sai | *chưa có* — đề xuất: đếm số lần khoá IP oan và số view bị từ chối nhầm vào `api-audit.log`, tổng hợp hằng tuần | từ chối khởi động nếu login có quyền ghi |
 
 ### Cách nối vòng 2 vào một công cụ mới (checklist)

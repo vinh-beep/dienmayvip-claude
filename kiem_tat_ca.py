@@ -17,7 +17,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SUITES = ["sql-readonly-api", "drive-sync"]
+SUITES = ["sql-readonly-api", "drive-sync", "video-links", "ton-dong", "tong-hop-viec", "harness2-app-chuan", "nhac-cat"]
 
 # (thư mục, tệp, đoạn gốc, đoạn thay, ý nghĩa). Đoạn gốc PHẢI xuất hiện đúng 1 lần.
 MUTATIONS: list[tuple[str, str, str, str, str]] = [
@@ -40,23 +40,39 @@ MUTATIONS: list[tuple[str, str, str, str, str]] = [
      "rel in cho_phep_tep", "Harness² vòng 2 nới cả luật cứng (bí mật/giá vốn qua nhờ phán oan)"),
     ("drive-sync", "kiem_an_toan.py", "and bam_tep(Path(full)) == cho_phep_tep[rel]", "",
      "bỏ so SHA-256: tệp phán oan qua dù nội dung đã đổi"),
+    ("video-links", "video_links.py", "return bool(path) and not re.search(r'[\"\\r\\n\\x00]', path)", "return bool(path)",
+     "cho đường dẫn có dấu nháy/xuống dòng vào lệnh explorer"),
+    ("video-links", "video_links.py", 'return text if parsed.scheme in ("http", "https") and parsed.netloc else ""', "return text",
+     "mở cả link javascript:/file:"),
+    ("ton-dong", "ton_dong.py", "elif du_lieu_cu:", "elif False:", "bỏ cảnh báo dữ liệu đã đứng"),
+    ("ton-dong", "ton_dong.py", "if cur == ban_san and days >= ngay_dong:", "if days >= ngay_dong:", "bỏ đối chiếu với tồn hiện tại"),
+    ("ton-dong", "ton_dong.py", "None if sim or gia is None else c * gia", "None if gia is None else c * gia", "tính giá trị cho SIM"),
+    ("tong-hop-viec", "tong_hop_viec.py", "line = MAU_SDT.sub(\"[che: SĐT]\", line)", "pass", "không che SĐT trong bản tổng hợp"),
+    ("tong-hop-viec", "tong_hop_viec.py", "if MAU_NOI_BO.search(line):", "if False:", "để lọt dòng giá nội bộ vào bản chép"),
+    ("tong-hop-viec", "tong_hop_viec.py", 'm.trang_thai = "treo"', 'm.trang_thai = "dang-lam"', "không phát hiện tin treo"),
+    ("harness2-app-chuan", "kiem_chuan_app.py", 'kq["bi-mat"] = not any(co_bi_mat_gan_cung(t) for t in texts.values())', 'kq["bi-mat"] = True', "bỏ kiểm bí mật gán cứng"),
+    ("harness2-app-chuan", "kiem_chuan_app.py", 'kq["kiem"] = "--kiem" in all_text', 'kq["kiem"] = True', "coi app nào cũng có --kiem"),
+    ("nhac-cat", "kiem_cat_nhac.py", "elif can > dai + 0.01:", "elif False:", "cho cắt vượt độ dài bài"),
+    ("nhac-cat", "kiem_cat_nhac.py", "if len(seen.get(m.get(\"tep\", \"\"), [])) > 1:", "if False:", "cho 1 bài dùng nhiều SP"),
 ]
 
 
-def run_pytest(cwd: Path) -> tuple[int, str]:
+def run_pytest(cwd: Path, *, full: bool = False) -> tuple[int, str]:
     env = {**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     proc = subprocess.run(
         [sys.executable, "-I", "-m", "pytest", "-q", "-x", "-p", "no:cacheprovider"],
         cwd=cwd, capture_output=True, encoding="utf-8", errors="replace", timeout=600, env=env,
     )
-    tail = (proc.stdout.strip().splitlines() or [proc.stderr.strip()[-200:]])[-1]
-    return proc.returncode, tail
+    lines = proc.stdout.strip().splitlines() or [proc.stderr.strip()[-200:]]
+    if full and proc.returncode != 0:  # in chi tiết ca đỏ để đọc ngay trong nhật ký CI
+        print("\n".join(lines[-60:]))
+    return proc.returncode, lines[-1]
 
 
 def chay_bo_kiem() -> int:
     bad = 0
     for name in SUITES:
-        rc, tail = run_pytest(ROOT / name)
+        rc, tail = run_pytest(ROOT / name, full=True)
         print(f"{'ĐẠT ' if rc == 0 else 'HỎNG'}  {name:18s} {tail}")
         bad += rc != 0
     return 1 if bad else 0
