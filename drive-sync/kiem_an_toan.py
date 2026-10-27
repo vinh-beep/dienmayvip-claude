@@ -7,6 +7,7 @@ Không bao giờ ghi nội dung khớp ra log — chỉ ghi tên luật và số
 from __future__ import annotations
 
 import fnmatch
+import hashlib
 import os
 import re
 import unicodedata
@@ -70,6 +71,30 @@ DATA_RULES: list[tuple[str, re.Pattern[str]]] = [
         re.IGNORECASE)),
     ("cccd-cmnd", re.compile(r"(?:cccd|cmnd|c[aă]n c[uư][oớ]c)[^\n]{0,20}\d{9,12}", re.IGNORECASE)),
 ]
+
+
+# ---------------------------------------------------------------- Harness² vòng 2: luật cứng / luật mềm
+#
+# LUẬT CỨNG: không bao giờ được nới bởi sổ bài học hay phán xử "oan" — bí mật, giá vốn, CCCD, tên tệp nhạy cảm.
+# LUẬT MỀM: hay báo oan (dãy số giống SĐT, PDF không quét được...). Anh phán xử "oan" cho ĐÚNG MỘT TỆP thì
+# tệp đó được đi qua, nhưng chỉ khi nội dung còn y nguyên (so SHA-256). Đổi nội dung → chặn lại từ đầu.
+LUAT_CUNG = frozenset({name for name, _ in SECRET_RULES} | {"ten-nhay-cam", "gia-von-ncc", "cccd-cmnd"})
+LUAT_MEM = frozenset({
+    "so-dien-thoai-vn", "so-tai-khoan", "loai-tep-khong-quet-duoc",
+    "qua-lon-de-quet", "ooxml-qua-lon", "khong-doc-duoc-ooxml", "khong-doc-duoc",
+})
+
+
+def bam_tep(path: Path) -> str | None:
+    """SHA-256 của tệp (đọc theo khối). None nếu không đọc được."""
+    h = hashlib.sha256()
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+    except OSError:
+        return None
+    return h.hexdigest()
 
 
 @dataclass(frozen=True)
@@ -160,6 +185,7 @@ class ScanResult:
     blocked: dict[str, str] = field(default_factory=dict)  # đường dẫn → luật@dòng
     skipped: Counter = field(default_factory=Counter)
     seen: int = 0
+    theo_bai_hoc: list[str] = field(default_factory=list)  # tệp đi qua nhờ phán xử "oan" (Harness² vòng 2)
 
 
 def quet_thu_muc(
@@ -170,8 +196,12 @@ def quet_thu_muc(
     min_age_s: float,
     now: float,
     cho_phep_khong_quet: frozenset[str] = frozenset(),
+    cho_phep_tep: dict[str, str] | None = None,
 ) -> ScanResult:
+    """cho_phep_tep: {đường dẫn tương đối: sha256} do hoc_tu_chan.py sinh từ phán xử "oan" của anh.
+    Chỉ có tác dụng với LUAT_MEM và khi SHA-256 khớp y nguyên. Luật cứng không nhận bất kỳ ngoại lệ nào."""
     res = ScanResult()
+    cho_phep_tep = cho_phep_tep or {}
     root = Path(root)
     for dirpath, dirnames, filenames in os.walk(root, topdown=True, followlinks=False):
         kept = []
@@ -213,6 +243,10 @@ def quet_thu_muc(
                 res.skipped["dang-ghi-do"] += 1
                 continue
             verdict = kiem_noi_dung(Path(full), st.st_size, cho_phep_khong_quet=cho_phep_khong_quet)
+            if (not verdict.ok and verdict.rule in LUAT_MEM and rel in cho_phep_tep
+                    and bam_tep(Path(full)) == cho_phep_tep[rel]):
+                verdict = OK
+                res.theo_bai_hoc.append(rel)
             if verdict.ok:
                 res.allowed.append(rel)
                 res.allowed_bytes += st.st_size
