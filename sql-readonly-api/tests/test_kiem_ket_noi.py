@@ -109,3 +109,12 @@ def test_cli_khong_sap_khi_console_la_cp1252(tmp_path):
     proc = subprocess.run([sys.executable, str(Path(kk.__file__)), "--nhe"], capture_output=True, env=env, timeout=60)
     assert b"Traceback" not in proc.stderr, proc.stderr.decode("utf-8", "replace")
     assert proc.returncode == 1 and "HỎNG".encode("utf-8") in proc.stdout
+
+
+# ---------------------------------------------------------------- --kiem (chuẩn app Harness²)
+
+
+def test_tu_kiem_dat_va_lenh_kiem_ma_0(capsys):
+    assert kk.tu_kiem() == []
+    assert kk.main(["--kiem"]) == 0
+    assert "KIỂM: ĐẠT" in capsys.readouterr().out

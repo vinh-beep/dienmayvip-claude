@@ -344,13 +344,47 @@ def chay(nguon: list[Path], ra: Path, *, bay_gio: datetime | None = None, treo_g
     return kq
 
 
+def tu_kiem() -> list[str]:
+    """--kiem: che dữ liệu nhạy cảm + phát hiện tin treo trên thư mục tạm dựng sẵn. Không đọc Bridge thật."""
+    import tempfile
+    loi: list[str] = []
+    c = che("gọi 0905123456 nhé\nSố TK: 1234567890\ngiá vốn A36 là 6tr\nbình thường")
+    if "0905123456" in c or "1234567890" in c or "6tr" in c or "bình thường" not in c:
+        loi.append("che SĐT / số TK / giá nội bộ không đúng")
+    if phan_loai_trang_thai("🔴 Máy treo") != "gap" or phan_loai_trang_thai("✅ Xong việc") != "xong":
+        loi.append("phân loại trạng thái sai")
+    bay_gio = datetime(2026, 10, 27, 12, 0, tzinfo=VN)
+    with tempfile.TemporaryDirectory() as td:
+        src, ra = Path(td) / "src", Path(td) / "ra"
+        src.mkdir()
+        tin = {"id": "tin-1", "ts": "2026-10-27T01:00:00+07:00", "type": "viec", "chu_de": "doi-gia",
+               "noiDung": ["Đổi giá A36, liên hệ 0905123456"]}
+        (src / "tin-2026-10-27T01-00__viec__doi-gia.json").write_text(json.dumps(tin, ensure_ascii=False), encoding="utf-8")
+        kq = chay([src], ra, bay_gio=bay_gio, treo_gio=6)
+        text = json.dumps(kq, ensure_ascii=False) + (ra / "chep-tat-ca.txt").read_text(encoding="utf-8")
+        if kq["tong"] != 1:
+            loi.append(f"đọc tin mẫu ra {kq['tong']} mục, cần 1")
+        if "0905123456" in text:
+            loi.append("SĐT lọt vào bản tổng hợp")
+        if "treo" not in text:
+            loi.append("tin 11 giờ chưa có kết quả không bị đánh dấu treo")
+    return loi
+
+
 def main(argv: list[str] | None = None) -> int:
     for s in (sys.stdout, sys.stderr):  # console Windows cp1252
         try:
             s.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
+    if "--kiem" in (sys.argv[1:] if argv is None else argv):
+        loi = tu_kiem()
+        print("KIỂM: " + ("ĐẠT" if not loi else "LỖI"))
+        for l in loi:
+            print(" -", l)
+        return 0 if not loi else 1
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--kiem", action="store_true", help="tự kiểm trên dữ liệu mẫu, không đọc Bridge thật")
     ap.add_argument("--nguon", action="append", required=True, help="thư mục quét (lặp lại được)")
     ap.add_argument("--ra", required=True)
     ap.add_argument("--treo-gio", type=float, default=6)

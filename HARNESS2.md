@@ -44,6 +44,21 @@ Mẫu chuẩn cho mọi công cụ mới trên máy chính: **mặc định ch�
 | `kiem_tat_ca.py` + CI Ubuntu/Windows (base, 25/10) | bộ kiểm thử | **tự kiểm bộ kiểm** bằng đột biến: cố ý phá 27 chỗ (tắt token, tắt chặn giá vốn, `copy`→`sync`…), bộ kiểm phải đỏ | đột biến nào vẫn xanh = lỗ hổng → mã thoát 1 |
 | `sql-readonly-api/` | chặn cột nghi giá vốn/PII khi khởi động; khoá IP sau 10 lần sai | *chưa có* — đề xuất: đếm số lần khoá IP oan và số view bị từ chối nhầm vào `api-audit.log`, tổng hợp hằng tuần | từ chối khởi động nếu login có quyền ghi |
 
+### Chuẩn app Harness² (27/10/2026: 7/7 app đạt)
+
+Mọi thư mục app trong kho phải có **lệnh `--kiem` thật** (tự chạy trên dữ liệu mẫu dựng sẵn, không cần tệp thật, mạng hay SQL; in `KIỂM: ĐẠT`, mã thoát 0/1), **`HELP.md`** (trợ giúp F1) và **không bí mật gán cứng**. CI chạy `harness2-app-chuan/kiem_chuan_app.py --goc .` và từng `--kiem` trên Ubuntu + Windows; app mới thiếu một mục là CI đỏ.
+
+| App | `--kiem` kiểm gì |
+|---|---|
+| drive-sync | `hoc_tu_chan.py --kiem`: luật cứng không bị nới, dưới 5 mẫu = chưa đủ dữ liệu |
+| sql-readonly-api | `kiem_ket_noi.py --kiem`: chặn bảng gốc, cột giá vốn/NCC/SĐT, tên nguồn chèn lệnh, trần dòng; giá trị lọc đi qua tham số `?` |
+| ton-dong | đọc số kiểu Việt, nhận hàng đồng ≥ 14 ngày, SIM không tính giá trị, cảnh báo dữ liệu cũ |
+| nhac-cat | đọc độ dài WAV thật, bắt cắt vượt bài, nhạc chưa rõ bản quyền, 1 bài nhiều SP |
+| tong-hop-viec | che SĐT / số TK / dòng giá nội bộ, phát hiện tin treo, SĐT không lọt vào bản tổng hợp |
+| video-links | loại link `javascript:`/`file:`, tên miền giả mạo, đường dẫn có dấu nháy; không mở link độc |
+
+Mỗi `--kiem` đã qua tự kiểm đột biến: cố ý phá 15 rào chắn, `--kiem` báo đỏ cả 15. Lưu ý: bộ chấm chỉ dò chữ `--kiem`, nên khi vá app phải làm lệnh chạy thật, không chỉ ghi chữ vào tài liệu.
+
 ### Cách nối vòng 2 vào một công cụ mới (checklist)
 
 1. Xác định **điểm dự đoán** của vòng 1 và **kết quả thật** đo được sau khi làm (xem, đơn, báo oan, khớp kho…).
@@ -71,3 +86,4 @@ Mẫu chuẩn cho mọi công cụ mới trên máy chính: **mặc định ch�
 - **25/10/2026 21h55** (Cloud): dựng `harness2-chay-bu/`, 16/16 test, thêm H10.
 - **25/10/2026 ~22h** (Cloud, nhánh base): đọc lại đích sau khi đẩy, `--kiem-nhe`/`--kiem`, `kiem_tat_ca.py --tu-kiem` (đột biến), CI Ubuntu + Windows, vá console cp1252.
 - **25/10/2026 23h00** (Cloud, phiên này): thêm vòng 2 cho bộ chặn drive-sync (`hoc_tu_chan.py`, 17 test mới, 71/71 qua), chốt `LUAT_CUNG`/`LUAT_MEM`, tài liệu này.
+- **27/10/2026** (Cloud): 6 app còn lại đạt chuẩn app Harness² — `--kiem` thật cho sql-readonly-api, ton-dong, nhac-cat, tong-hop-viec, video-links (đột biến 15/15 bắt); HELP.md cho 6 app; CI chạy bộ chấm chuẩn + từng `--kiem`.

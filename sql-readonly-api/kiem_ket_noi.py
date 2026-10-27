@@ -1,5 +1,6 @@
 """Kiểm API chỉ-đọc TRƯỚC khi mở ra ngoài. Không ghi gì, không gọi AI (0 token).
 
+  python kiem_ket_noi.py --kiem  # tự kiểm rào chắn trên cấu hình mẫu, không cần config/SQL
   python kiem_ket_noi.py --nhe   # chỉ đọc cấu hình + views.json, KHÔNG đụng SQL
   python kiem_ket_noi.py         # đầy đủ: thêm kết nối SQL thật, kiểm quyền, đọc thử từng view
 
@@ -56,6 +57,35 @@ def kiem_day_du(views: dict[str, api.ViewSpec], backend: Any) -> list[Result]:
     return out
 
 
+def tu_kiem() -> list[str]:
+    """--kiem: kiểm các rào chắn của API trên cấu hình mẫu, KHÔNG cần config.env, views.json hay SQL."""
+    loi: list[str] = []
+    tot = {"views": {"ton-gia-ban": {"source": "dbo.vw_API_TonGiaBan", "columns": ["ParentSKU", "Ton", "GiaLe"],
+                                     "filter_columns": ["ParentSKU"], "order_by": "ParentSKU", "max_rows": 500}}}
+    try:
+        views = api.parse_views(tot)
+    except api.ConfigError as exc:
+        return [f"cấu hình mẫu hợp lệ bị từ chối: {exc}"]
+    xau = {
+        "mở bảng gốc MATHANG": {"source": "dbo.MATHANG", "columns": ["ParentSKU"], "order_by": "ParentSKU"},
+        "cột giá vốn": {"source": "vw_API_X", "columns": ["ParentSKU", "GiaVon"], "order_by": "ParentSKU"},
+        "cột SĐT": {"source": "vw_API_X", "columns": ["ParentSKU", "SoDienThoai"], "order_by": "ParentSKU"},
+        "cột NCC": {"source": "vw_API_X", "columns": ["ParentSKU", "TenNCC"], "order_by": "ParentSKU"},
+        "tên nguồn chèn lệnh": {"source": "vw_API_X;DROP TABLE a", "columns": ["ParentSKU"], "order_by": "ParentSKU"},
+        "trần dòng quá lớn": {"source": "vw_API_X", "columns": ["ParentSKU"], "order_by": "ParentSKU", "max_rows": 100000},
+    }
+    for ten, item in xau.items():
+        try:
+            api.parse_views({"views": {"x": item}})
+            loi.append(f"không chặn: {ten}")
+        except api.ConfigError:
+            pass
+    sql, params = api.build_select(views["ton-gia-ban"], "sqlserver", {"ParentSKU": "A36' OR 1=1 --"}, 50, 0)
+    if "A36" in sql or "A36' OR 1=1 --" not in [str(p) for p in params]:
+        loi.append("giá trị lọc không đi qua tham số ?")
+    return loi
+
+
 def _utf8_console() -> None:
     """Console Windows hay là cp1252/cp437: in tiếng Việt sẽ sập UnicodeEncodeError. Ép UTF-8, ký tự lạ thành '?'."""
     for stream in (sys.stdout, sys.stderr):
@@ -68,6 +98,12 @@ def _utf8_console() -> None:
 def main(argv: list[str] | None = None) -> int:
     _utf8_console()
     argv = sys.argv[1:] if argv is None else argv
+    if "--kiem" in argv:
+        loi = tu_kiem()
+        print("KIỂM: " + ("ĐẠT" if not loi else "LỖI"))
+        for l in loi:
+            print(" -", l)
+        return 0 if not loi else 1
     nhe = "--nhe" in argv
     api.load_env_file(api.HERE / "config.env")
     env = dict(os.environ)

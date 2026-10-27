@@ -129,13 +129,55 @@ def markdown(kq: dict[str, Any]) -> str:
     return "\n".join(L) + "\n"
 
 
+def tu_kiem() -> list[str]:
+    """--kiem: kế hoạch mẫu + độ dài giả + một tệp WAV dựng tạm. Không cần ffprobe hay nhạc thật."""
+    import tempfile
+    loi: list[str] = []
+    with tempfile.TemporaryDirectory() as td:
+        wav = Path(td) / "thu.wav"
+        rate, bytes_per_s, seconds = 8000, 8000, 2
+        data = b"\x00" * (bytes_per_s * seconds)
+        fmt = struct.pack("<HHIIHH", 1, 1, rate, bytes_per_s, 1, 8)
+        wav.write_bytes(b"RIFF" + struct.pack("<I", 4 + 8 + len(fmt) + 8 + len(data)) + b"WAVE"
+                        + b"fmt " + struct.pack("<I", len(fmt)) + fmt + b"data" + struct.pack("<I", len(data)) + data)
+        d = do_dai_wav(wav)
+        if d is None or abs(d - seconds) > 0.01:
+            loi.append(f"đọc độ dài WAV sai ({d})")
+    dai = {"suno-a.mp3": 60.0, "suno-b.mp3": 20.0}
+    fake = lambda p: dai.get(p.name)  # noqa: E731
+    ke = [
+        {"sku": "A04", "tep": "D:/MP3/suno-a.mp3", "doan_mo_giay": 2.5, "nhac_tu": 31.0, "tong_giay": 18.0},
+        {"sku": "A05", "tep": "D:/MP3/suno-b.mp3", "doan_mo_giay": 2.0, "nhac_tu": 10.0, "tong_giay": 18.0},
+        {"sku": "A06", "tep": "D:/Tai ve/la.mp3", "doan_mo_giay": 2.0, "nhac_tu": 0.0, "tong_giay": 18.0},
+    ]
+    kq = kiem(ke, goc_ban_quyen=[], do_dai_fn=fake)
+    m = {x["sku"]: x for x in kq["muc"]}
+    if not m["A04"]["dat"]:
+        loi.append("kế hoạch hợp lệ bị đánh hỏng: " + "; ".join(m["A04"]["loi"]))
+    if m["A05"]["dat"] or not any("vượt độ dài" in e for e in m["A05"]["loi"]):
+        loi.append("không bắt cắt vượt độ dài bài")
+    if m["A06"]["dat"] or not any("bản quyền" in e for e in m["A06"]["loi"]):
+        loi.append("không bắt nhạc chưa rõ bản quyền")
+    dup = kiem([ke[0], dict(ke[0], sku="A07")], goc_ban_quyen=[], do_dai_fn=fake)
+    if dup["hong"] != 2:
+        loi.append("không bắt 1 bài dùng cho nhiều SP")
+    return loi
+
+
 def main(argv: list[str] | None = None) -> int:
     for s in (sys.stdout, sys.stderr):
         try:
             s.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
+    if "--kiem" in (sys.argv[1:] if argv is None else argv):
+        loi = tu_kiem()
+        print("KIỂM: " + ("ĐẠT" if not loi else "LỖI"))
+        for l in loi:
+            print(" -", l)
+        return 0 if not loi else 1
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--kiem", action="store_true", help="tự kiểm trên kế hoạch mẫu, không cần nhạc thật")
     ap.add_argument("--ke-hoach", required=True)
     ap.add_argument("--ra", required=True)
     ap.add_argument("--goc-ban-quyen", action="append", default=[], help="thư mục nhạc có phép thương mại (ví dụ D:\\MP3)")

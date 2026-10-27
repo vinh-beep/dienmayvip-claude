@@ -5,3 +5,4 @@ config.env
 views.json
 *.log
 .env
+chuan-app-ci/
