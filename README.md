@@ -8,7 +8,7 @@ Mã nguồn Claude Cloud dựng cho hệ thống DienmayVIP.
 - `tong-hop-viec/` — gom việc gấp từ mọi app, tổng kết theo danh mục kiểu Lark Mail, nút Chép tất cả (xem README trong thư mục).
 - `harness2-app-chuan/` — kiểm chuẩn Harness² (--kiem, HELP.md, không bí mật gán cứng) cho mọi thư mục app.
 - `nhac-cat/` — kiểm kế hoạch cắt nhạc video theo độ dài thật của tệp và bản quyền.
-- `video-kiem-duyet/` — kiểm duyệt video trước xuất bản bằng OCR khung hình: chặn SĐT, placeholder, từ cấm QC-2012; đóng băng an toàn.
+- `video-kiem-duyet/` — `kiem_duyet_video_ocr.py`: kiểm duyệt video trước xuất bản bằng OCR khung hình: chặn SĐT, placeholder, từ cấm QC-2012; đóng băng an toàn. Đã thử thật trên PC 28/10.
 - `drive-sync/` — đồng bộ thư mục chọn lọc lên Google Drive bằng rclone, có quét an toàn và Harness² vòng 2 cho bộ chặn (xem README trong thư mục).
 - `HARNESS2.md` — luật Harness² (vòng 1 dự đoán → vòng 2 đo thật → sổ bài học) và cách từng module trong kho áp dụng.
 

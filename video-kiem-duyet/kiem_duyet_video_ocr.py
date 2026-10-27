@@ -1,11 +1,11 @@
 """Kiểm duyệt video TRƯỚC khi xuất bản bằng OCR khung hình: chặn SĐT trên hình, chữ placeholder, từ cấm QC-2012.
-Bản nâng cấp của _Shared/doc_anh_du_phong.py (anh Vĩnh gửi 27/10). Đóng băng an toàn: không mở được video,
+Bản nâng cấp của mã "doc_anh_du_phong" anh Vĩnh gửi 27/10, đặt thành TỆP RIÊNG kiem_duyet_video_ocr.py (trên PC, _Shared/doc_anh_du_phong.py là module khác đang được Trợ Lý VIP gọi, không thay). Đóng băng an toàn: không mở được video,
 không có OCR, không lấy được khung hình → CHẶN, không bao giờ "đủ điều kiện" vì thiếu dữ liệu.
 
 Dùng trên PC:  pip install opencv-python pytesseract  (+ Tesseract có gói vie)
-  python doc_anh_du_phong.py "D:\\20 Kenh MXH\\A04\\A04 - TikTok YouTube.mp4"
-  python doc_anh_du_phong.py --kiem       # tự kiểm luật chữ, không cần cv2/tesseract
-  python doc_anh_du_phong.py <video> --chi-tiet   # in thêm chữ OCR đọc được ở từng khung
+  python kiem_duyet_video_ocr.py "D:\\20 Kenh MXH\\A04\\A04 - TikTok YouTube.mp4"
+  python kiem_duyet_video_ocr.py --kiem       # tự kiểm luật chữ, không cần cv2/tesseract
+  python kiem_duyet_video_ocr.py <video> --chi-tiet   # in thêm chữ OCR đọc được ở từng khung
 """
 from __future__ import annotations
 

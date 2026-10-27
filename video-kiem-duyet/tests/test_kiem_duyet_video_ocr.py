@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import doc_anh_du_phong as da  # noqa: E402
+import kiem_duyet_video_ocr as da  # noqa: E402
 
 
 @pytest.mark.parametrize("text,ok", [
