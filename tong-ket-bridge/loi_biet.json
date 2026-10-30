@@ -10,5 +10,10 @@
   "computer_unreachable": {"nghia": "Phiên Remote Control không tới được máy", "chua": "Phiên CLI tự nối lại; phiên Desktop phải gõ /remote-control. Nếu mọi phiên cùng rớt → kiểm điện/modem."},
   "08001": {"nghia": "ODBC không nối được SQL Server", "chua": "Chuỗi kết nối phải có Encrypt=no;TrustServerCertificate=yes; driver ODBC 17/18; kiểm SQL 192.168.1.200 đã lên chưa."},
   "email phan loai (ma 2)": {"nghia": "Tác vụ email thoát mã 2 — thường do Gmail chưa cấp lại quyền", "chua": "Cấp lại quyền Gmail (xem invalid_grant), rồi chạy lại tác vụ."},
+  "0x800710e0": {"nghia": "Lượt cũ của tác vụ còn đang chạy (dịch vụ chạy lâu)", "chua": "KHÔNG phải lỗi app (luật L35). Không vá; nếu lặp nhiều ngày thì xem tác vụ có treo không."},
+  "0x80070004": {"nghia": "Tác vụ bị giết khi máy ép khởi động lại", "chua": "KHÔNG phải lỗi app (L35). Harness² chạy bù sẽ chạy lại; xem Event Log 1074/6008."},
+  "0x8007050b": {"nghia": "Tác vụ bị giết khi máy ép khởi động lại", "chua": "KHÔNG phải lỗi app (L35). Chạy bù; xem Event Log 1074/6008."},
+  "0xc000026b": {"nghia": "Tiến trình bị kết thúc lúc tắt máy", "chua": "KHÔNG phải lỗi app (L35). Chạy bù; nếu kèm 15+ tác vụ cùng giờ → máy khởi động lại."},
+  "0xffffffff": {"nghia": "Mã thoát -1 do bị giết giữa chừng", "chua": "KHÔNG phải lỗi app (L35). Chạy bù; chỉ vá nếu lặp khi máy không khởi động lại."},
   "hop mail vip nap (ma 2)": {"nghia": "Hộp Mail VIP nạp lỗi — Gmail OAuth chết", "chua": "Như invalid_grant; sau đó nạp bù với after:2026/10/22, app chống trùng theo Mã thư."}
 }
